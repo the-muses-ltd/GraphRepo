@@ -14,7 +14,6 @@ const ctx = await esbuild.context({
     "vscode",
     "web-tree-sitter",
     "tree-sitter-wasms",
-    "neo4j-driver",
   ],
   // Shim import.meta.url for CJS output (needed by tree-sitter-init.ts)
   define: {

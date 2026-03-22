@@ -120,11 +120,18 @@ export const getRepoSummary = () => ({
 
 export const getGraphData = (
   nodeTypes: string[] | null,
-  limit: number
+  limit: number,
+  repo?: string | null
 ) => {
-  const nodeFilter = nodeTypes
-    ? `WHERE any(label IN labels(n) WHERE label IN $nodeTypes) AND NOT n:Community`
-    : `WHERE NOT n:Community`;
+  const conditions = ["NOT n:Community"];
+  if (nodeTypes) conditions.push("any(label IN labels(n) WHERE label IN $nodeTypes)");
+  if (repo) conditions.push("n.repo = $repo");
+  const nodeFilter = `WHERE ${conditions.join(" AND ")}`;
+
+  const mConditions = ["NOT m:Community"];
+  if (nodeTypes) mConditions.push("any(label IN labels(m) WHERE label IN $nodeTypes)");
+  if (repo) mConditions.push("m.repo = $repo");
+  const mFilter = `WHERE ${mConditions.join(" AND ")}`;
 
   return {
     cypher: `MATCH (n)
@@ -133,20 +140,19 @@ export const getGraphData = (
        OPTIONAL MATCH (n)-[:BELONGS_TO_COMMUNITY]->(c:Community {level: 1})
        WITH n, c.id AS communityId
        OPTIONAL MATCH (n)-[r]-(m)
-       WHERE NOT m:Community
-       ${nodeTypes ? `AND any(label IN labels(m) WHERE label IN $nodeTypes)` : ""}
+       ${mFilter}
        RETURN collect(DISTINCT {
          id: elementId(n), labels: labels(n), name: n.name,
          qualifiedName: n.qualifiedName, path: n.path,
          language: n.language, lineCount: n.lineCount,
-         startLine: n.startLine, kind: n.kind,
-         communityId: communityId
+         startLine: n.startLine, endLine: n.endLine, kind: n.kind,
+         communityId: communityId, repo: n.repo
        }) AS nodes,
        collect(DISTINCT {
          source: elementId(startNode(r)), target: elementId(endNode(r)),
          type: type(r)
        }) AS edges`,
-    params: { nodeTypes, limit },
+    params: { nodeTypes, limit, repo: repo ?? null },
   };
 };
 

@@ -32,9 +32,16 @@ export const syncToNeo4j = async (
   config: Config,
   clear: boolean = false
 ): Promise<SyncResult> => {
+  // Derive repo name from the repo path
+  const repo = config.repoPath.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? "unknown";
+
   return withSession(config.neo4j, async (session) => {
+    // Always clear this repo's nodes before re-syncing (idempotent per-repo)
+    console.log(`Clearing existing graph for repo "${repo}"...`);
+    await clearGraph(session, repo);
+
     if (clear) {
-      console.log("Clearing existing graph...");
+      console.log("Clearing entire graph...");
       await clearGraph(session);
     }
 
@@ -42,40 +49,40 @@ export const syncToNeo4j = async (
     await ensureSchema(session);
 
     console.log("Merging file nodes...");
-    await mergeFileNodes(session, parsed.files);
+    await mergeFileNodes(session, parsed.files, repo);
 
     console.log("Merging function nodes...");
-    await mergeFunctionNodes(session, parsed.files);
+    await mergeFunctionNodes(session, parsed.files, repo);
 
     console.log("Merging class nodes...");
-    await mergeClassNodes(session, parsed.files);
+    await mergeClassNodes(session, parsed.files, repo);
 
     console.log("Merging interface nodes...");
-    await mergeInterfaceNodes(session, parsed.files);
+    await mergeInterfaceNodes(session, parsed.files, repo);
 
     console.log("Merging module nodes...");
     await mergeModuleNodes(session, parsed.externalModules);
 
     console.log("Merging folder nodes...");
-    await mergeFolderNodes(session, parsed.files);
+    await mergeFolderNodes(session, parsed.files, repo);
 
     console.log("Creating CONTAINS relationships...");
-    await createContainsRelationships(session, parsed.files);
+    await createContainsRelationships(session, parsed.files, repo);
 
     console.log("Creating HAS_METHOD relationships...");
-    await createHasMethodRelationships(session, parsed.files);
+    await createHasMethodRelationships(session, parsed.files, repo);
 
     console.log("Creating IMPORTS relationships...");
-    await createImportRelationships(session, parsed.files);
+    await createImportRelationships(session, parsed.files, repo);
 
     console.log("Creating CALLS relationships...");
-    await createCallRelationships(session, parsed.files);
+    await createCallRelationships(session, parsed.files, repo);
 
     console.log("Creating EXTENDS relationships...");
-    await createExtendsRelationships(session, parsed.files);
+    await createExtendsRelationships(session, parsed.files, repo);
 
     console.log("Creating folder relationships...");
-    await createFolderRelationships(session, parsed.files);
+    await createFolderRelationships(session, parsed.files, repo);
 
     const functionCount = parsed.files.reduce(
       (sum, f) => sum + f.functions.length + f.classes.reduce((s, c) => s + c.methods.length, 0),

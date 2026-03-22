@@ -7,6 +7,7 @@ export type GraphNode = {
   language: string | null;
   lineCount: number | null;
   startLine: number | null;
+  endLine: number | null;
   kind: string | null;
   communityId: string | null;
 };

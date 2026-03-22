@@ -284,6 +284,62 @@ export class GraphRenderer {
     this.tooltip.style.display = "none";
   }
 
+  /**
+   * Find and highlight the most specific node matching the active editor position.
+   * If the cursor is inside a function/class, highlights that; otherwise highlights the file.
+   */
+  private getNodePath(node: SimNode): string | null {
+    if (node.path) return node.path;
+    // Functions/Classes/Interfaces store path in qualifiedName as "filepath:name"
+    if (node.qualifiedName) {
+      const lastColon = node.qualifiedName.lastIndexOf(":");
+      if (lastColon > 0) return node.qualifiedName.substring(0, lastColon);
+    }
+    return null;
+  }
+
+  trackEditor(relativePath: string, line: number): boolean {
+    // Try to find a function/class/interface at this line
+    let bestMatch: SimNode | null = null;
+    let bestSpan = Infinity;
+
+    for (const node of this.nodes) {
+      const nodePath = this.getNodePath(node);
+      if (!nodePath || nodePath !== relativePath) continue;
+      const label = node.labels?.[0];
+
+      if (
+        (label === "Function" || label === "Class" || label === "Interface") &&
+        node.startLine != null &&
+        node.endLine != null &&
+        line >= node.startLine &&
+        line <= node.endLine
+      ) {
+        const span = node.endLine - node.startLine;
+        if (span < bestSpan) {
+          bestSpan = span;
+          bestMatch = node;
+        }
+      }
+    }
+
+    // Fall back to the File node
+    if (!bestMatch) {
+      bestMatch =
+        this.nodes.find(
+          (n) => n.labels?.[0] === "File" && n.path === relativePath
+        ) ?? null;
+    }
+
+    if (!bestMatch) return false;
+
+    // Don't re-center if already tracking this node
+    if (this.selectedNodeId === bestMatch.id) return true;
+
+    this.centerOnNode(bestMatch.id);
+    return true;
+  }
+
   centerOnNode(nodeId: string) {
     const node = this.nodes.find((n) => n.id === nodeId);
     if (!node || node.x == null || node.y == null) return;

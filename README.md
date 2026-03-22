@@ -6,6 +6,8 @@ Parse any codebase into a Neo4j graph, then visualize it with D3 and query it th
 ![Neo4j](https://img.shields.io/badge/Neo4j-4581C3?logo=neo4j&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-Claude-cc785c)
 
+![GraphRepo VS Code Extension](media/image.png)
+
 ## What it does
 
 - **Parses** your repo using Tree-sitter AST analysis (TypeScript, JavaScript, Python)

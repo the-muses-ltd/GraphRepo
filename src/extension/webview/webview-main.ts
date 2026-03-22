@@ -170,6 +170,13 @@ window.addEventListener("message", (event) => {
   if (msg.type === "centerOnNode" && msg.nodeId) {
     renderer.centerOnNode(msg.nodeId);
   }
+  if (msg.type === "trackEditor" && msg.path) {
+    // Show tracking status in search input placeholder
+    const found = renderer.trackEditor(msg.path, msg.line ?? 1);
+    searchInput.placeholder = found
+      ? `Tracking: ${msg.path}`
+      : `Not in graph: ${msg.path}`;
+  }
   if (msg.type === "refresh") {
     loadGraph();
   }

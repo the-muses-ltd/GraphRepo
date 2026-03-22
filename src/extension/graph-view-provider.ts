@@ -97,6 +97,10 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ type: "centerOnNode", nodeId });
   }
 
+  public trackEditor(relativePath: string, line: number): void {
+    this.view?.webview.postMessage({ type: "trackEditor", path: relativePath, line });
+  }
+
   public refresh(): void {
     this.view?.webview.postMessage({ type: "refresh" });
   }

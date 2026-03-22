@@ -4,11 +4,12 @@ import type { ParsedFile } from "../types.js";
 
 export const mergeFileNodes = async (
   session: Session,
-  files: ParsedFile[]
+  files: ParsedFile[],
+  repo: string
 ): Promise<void> => {
   await session.run(
     `UNWIND $files AS f
-     MERGE (file:File {path: f.path})
+     MERGE (file:File {path: f.path, repo: f.repo})
      SET file.name = f.name,
          file.extension = f.extension,
          file.language = f.language,
@@ -17,6 +18,7 @@ export const mergeFileNodes = async (
     {
       files: files.map((f) => ({
         path: f.path,
+        repo,
         name: path.basename(f.path),
         extension: path.extname(f.path),
         language: f.language,
@@ -29,12 +31,14 @@ export const mergeFileNodes = async (
 
 export const mergeFunctionNodes = async (
   session: Session,
-  files: ParsedFile[]
+  files: ParsedFile[],
+  repo: string
 ): Promise<void> => {
   const functions = files.flatMap((f) =>
     f.functions.map((fn) => ({
       qualifiedName: `${f.path}:${fn.name}`,
       name: fn.name,
+      repo,
       parameters: fn.parameters,
       returnType: fn.returnType,
       startLine: fn.startLine,
@@ -50,7 +54,7 @@ export const mergeFunctionNodes = async (
 
   await session.run(
     `UNWIND $functions AS fn
-     MERGE (func:Function {qualifiedName: fn.qualifiedName})
+     MERGE (func:Function {qualifiedName: fn.qualifiedName, repo: fn.repo})
      SET func.name = fn.name,
          func.parameters = fn.parameters,
          func.returnType = fn.returnType,
@@ -65,12 +69,14 @@ export const mergeFunctionNodes = async (
 
 export const mergeClassNodes = async (
   session: Session,
-  files: ParsedFile[]
+  files: ParsedFile[],
+  repo: string
 ): Promise<void> => {
   const classes = files.flatMap((f) =>
     f.classes.map((c) => ({
       qualifiedName: `${f.path}:${c.name}`,
       name: c.name,
+      repo,
       startLine: c.startLine,
       endLine: c.endLine,
       isExported: c.isExported,
@@ -83,7 +89,7 @@ export const mergeClassNodes = async (
 
   await session.run(
     `UNWIND $classes AS c
-     MERGE (cls:Class {qualifiedName: c.qualifiedName})
+     MERGE (cls:Class {qualifiedName: c.qualifiedName, repo: c.repo})
      SET cls.name = c.name,
          cls.startLine = c.startLine,
          cls.endLine = c.endLine,
@@ -98,6 +104,7 @@ export const mergeClassNodes = async (
       c.methods.map((m) => ({
         qualifiedName: `${f.path}:${c.name}.${m.name}`,
         name: m.name,
+        repo,
         parameters: m.parameters,
         returnType: m.returnType,
         startLine: m.startLine,
@@ -114,7 +121,7 @@ export const mergeClassNodes = async (
 
   await session.run(
     `UNWIND $methods AS m
-     MERGE (func:Function {qualifiedName: m.qualifiedName})
+     MERGE (func:Function {qualifiedName: m.qualifiedName, repo: m.repo})
      SET func.name = m.name,
          func.parameters = m.parameters,
          func.returnType = m.returnType,
@@ -129,12 +136,14 @@ export const mergeClassNodes = async (
 
 export const mergeInterfaceNodes = async (
   session: Session,
-  files: ParsedFile[]
+  files: ParsedFile[],
+  repo: string
 ): Promise<void> => {
   const interfaces = files.flatMap((f) =>
     f.interfaces.map((i) => ({
       qualifiedName: `${f.path}:${i.name}`,
       name: i.name,
+      repo,
       startLine: i.startLine,
       endLine: i.endLine,
       isExported: i.isExported,
@@ -146,7 +155,7 @@ export const mergeInterfaceNodes = async (
 
   await session.run(
     `UNWIND $interfaces AS i
-     MERGE (iface:Interface {qualifiedName: i.qualifiedName})
+     MERGE (iface:Interface {qualifiedName: i.qualifiedName, repo: i.repo})
      SET iface.name = i.name,
          iface.startLine = i.startLine,
          iface.endLine = i.endLine,
@@ -170,7 +179,8 @@ export const mergeModuleNodes = async (
 
 export const mergeFolderNodes = async (
   session: Session,
-  files: ParsedFile[]
+  files: ParsedFile[],
+  repo: string
 ): Promise<void> => {
   // Extract all unique folder paths from files
   const folders = new Set<string>();
@@ -187,11 +197,12 @@ export const mergeFolderNodes = async (
   const folderList = [...folders].map((fp) => ({
     path: fp,
     name: fp.split("/").pop() ?? fp,
+    repo,
   }));
 
   await session.run(
     `UNWIND $folders AS f
-     MERGE (folder:Folder {path: f.path})
+     MERGE (folder:Folder {path: f.path, repo: f.repo})
      SET folder.name = f.name`,
     { folders: folderList }
   );

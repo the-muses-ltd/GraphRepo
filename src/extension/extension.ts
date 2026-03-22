@@ -1,8 +1,7 @@
 import * as vscode from "vscode";
+import * as path from "path";
 import { Neo4jService, type Neo4jConfig } from "./neo4j-service.js";
 import { GraphViewProvider } from "./graph-view-provider.js";
-import { parseRepository } from "../parser/index.js";
-import { syncToNeo4j } from "../graph/index.js";
 import type { Config } from "../config.js";
 
 let neo4jService: Neo4jService | undefined;
@@ -41,10 +40,19 @@ export function activate(context: vscode.ExtensionContext) {
   // Command: Parse Workspace
   context.subscriptions.push(
     vscode.commands.registerCommand("graphrepo.parseWorkspace", async () => {
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      if (!workspaceFolder) {
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) {
         vscode.window.showErrorMessage("No workspace folder open.");
         return;
+      }
+
+      let workspaceFolder = folders[0];
+      if (folders.length > 1) {
+        const picked = await vscode.window.showWorkspaceFolderPick({
+          placeHolder: "Select folder to parse",
+        });
+        if (!picked) return;
+        workspaceFolder = picked;
       }
 
       const repoPath = workspaceFolder.uri.fsPath;
@@ -67,12 +75,6 @@ export function activate(context: vscode.ExtensionContext) {
         supportedExtensions: [".ts", ".tsx", ".js", ".jsx", ".py"],
       };
 
-      const clear = await vscode.window.showQuickPick(["No", "Yes"], {
-        placeHolder: "Clear existing graph before parsing?",
-      });
-
-      if (clear === undefined) return;
-
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -83,7 +85,10 @@ export function activate(context: vscode.ExtensionContext) {
           try {
             progress.report({ message: "Analyzing files..." });
 
-            const parsed = await parseRepository(config, (info) => {
+            const { parseRepository } = await import("../parser/index.js");
+            const { syncToNeo4j } = await import("../graph/index.js");
+
+            const parsed = await parseRepository(config, (info: { current: number; total: number; file: string }) => {
               progress.report({
                 message: `${info.current}/${info.total} — ${info.file}`,
                 increment: 100 / info.total,
@@ -91,7 +96,7 @@ export function activate(context: vscode.ExtensionContext) {
             });
 
             progress.report({ message: "Syncing to Neo4j..." });
-            const result = await syncToNeo4j(parsed, config, clear === "Yes");
+            const result = await syncToNeo4j(parsed, config);
 
             vscode.window.showInformationMessage(
               `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes`
@@ -163,6 +168,39 @@ export function activate(context: vscode.ExtensionContext) {
       graphViewProvider?.refresh();
     })
   );
+
+  // --- Editor tracking: sync graph view to active file/cursor ---
+  const getRelativePath = (uri: vscode.Uri): string | null => {
+    const ws = vscode.workspace.getWorkspaceFolder(uri);
+    if (!ws) return null;
+    return path.relative(ws.uri.fsPath, uri.fsPath).replace(/\\/g, "/");
+  };
+
+  let trackDebounce: ReturnType<typeof setTimeout>;
+
+  const trackEditor = (editor: vscode.TextEditor | undefined) => {
+    clearTimeout(trackDebounce);
+    if (!editor || !graphViewProvider) return;
+    trackDebounce = setTimeout(() => {
+      const rel = getRelativePath(editor.document.uri);
+      if (!rel) return;
+      const line = editor.selection.active.line + 1; // VS Code is 0-based, graph is 1-based
+      graphViewProvider?.trackEditor(rel, line);
+    }, 300);
+  };
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(trackEditor)
+  );
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeTextEditorSelection((e) => {
+      trackEditor(e.textEditor);
+    })
+  );
+
+  // Track the currently active editor on activation
+  trackEditor(vscode.window.activeTextEditor);
 }
 
 function getSymbolIcon(type: string): string {
