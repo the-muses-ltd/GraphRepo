@@ -28,6 +28,9 @@ export const createMcpServer = (config: Config): McpServer => {
     version: "0.1.0",
   });
 
+  // Derive default repo name from config path
+  const defaultRepo = config.repoPath.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? null;
+
   // search_code
   server.tool(
     "search_code",
@@ -44,7 +47,7 @@ export const createMcpServer = (config: Config): McpServer => {
       try {
         const results = await runQuery(
           config.neo4j,
-          queries.searchByName(query, type, limit)
+          queries.searchByName(query, type, limit, defaultRepo)
         );
         return {
           content: [{ type: "text" as const, text: formatResults(results) }],
@@ -75,7 +78,7 @@ export const createMcpServer = (config: Config): McpServer => {
       try {
         const results = await runQuery(
           config.neo4j,
-          queries.getDependencies(filePath, depth)
+          queries.getDependencies(filePath, depth, defaultRepo)
         );
         return {
           content: [{ type: "text" as const, text: formatResults(results) }],
@@ -106,7 +109,7 @@ export const createMcpServer = (config: Config): McpServer => {
       try {
         const results = await runQuery(
           config.neo4j,
-          queries.getDependents(filePath, depth)
+          queries.getDependents(filePath, depth, defaultRepo)
         );
         return {
           content: [{ type: "text" as const, text: formatResults(results) }],
@@ -136,7 +139,7 @@ export const createMcpServer = (config: Config): McpServer => {
       try {
         const results = await runQuery(
           config.neo4j,
-          queries.getFileStructure(filePath)
+          queries.getFileStructure(filePath, defaultRepo)
         );
         return {
           content: [{ type: "text" as const, text: formatResults(results) }],
@@ -171,7 +174,7 @@ export const createMcpServer = (config: Config): McpServer => {
       try {
         const results = await runQuery(
           config.neo4j,
-          queries.getCallGraph(functionName, depth, direction)
+          queries.getCallGraph(functionName, depth, direction, defaultRepo)
         );
         return {
           content: [{ type: "text" as const, text: formatResults(results) }],
@@ -202,7 +205,7 @@ export const createMcpServer = (config: Config): McpServer => {
       try {
         const results = await runQuery(
           config.neo4j,
-          queries.findRelated(entityName, maxHops)
+          queries.findRelated(entityName, maxHops, defaultRepo)
         );
         return {
           content: [{ type: "text" as const, text: formatResults(results) }],
@@ -270,7 +273,7 @@ export const createMcpServer = (config: Config): McpServer => {
     {},
     async () => {
       try {
-        const results = await runQuery(config.neo4j, queries.getRepoSummary());
+        const results = await runQuery(config.neo4j, queries.getRepoSummary(defaultRepo));
         return {
           content: [{ type: "text" as const, text: formatResults(results) }],
         };

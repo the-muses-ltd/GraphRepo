@@ -15,6 +15,12 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
     private readonly neo4j: Neo4jService
   ) {}
 
+  private getRepoName(): string | null {
+    const ws = vscode.workspace.workspaceFolders?.[0];
+    if (!ws) return null;
+    return ws.uri.fsPath.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? null;
+  }
+
   resolveWebviewView(
     webviewView: vscode.WebviewView,
     _context: vscode.WebviewViewResolveContext,
@@ -75,7 +81,7 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
       let data: unknown;
       switch (type) {
         case "fetchGraph":
-          data = await this.neo4j.getGraphData(payload.types, payload.limit);
+          data = await this.neo4j.getGraphData(payload.types, payload.limit, this.getRepoName());
           break;
         case "searchCode":
           data = await this.neo4j.searchNodes(payload.query);

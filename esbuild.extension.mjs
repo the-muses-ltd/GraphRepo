@@ -12,8 +12,6 @@ const ctx = await esbuild.context({
   sourcemap: true,
   external: [
     "vscode",
-    "web-tree-sitter",
-    "tree-sitter-wasms",
   ],
   // Shim import.meta.url for CJS output (needed by tree-sitter-init.ts)
   define: {

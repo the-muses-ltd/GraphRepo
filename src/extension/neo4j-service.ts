@@ -14,10 +14,11 @@ export class Neo4jService {
 
   async getGraphData(
     types: string[] | null,
-    limit: number
+    limit: number,
+    repo?: string | null
   ): Promise<GraphData> {
     return withSession(this.config, async (session) => {
-      const query = getGraphData(types, limit);
+      const query = getGraphData(types, limit, repo);
       const result = await session.run(query.cypher, query.params);
       const record = result.records[0];
       if (!record) return { nodes: [], edges: [] };
