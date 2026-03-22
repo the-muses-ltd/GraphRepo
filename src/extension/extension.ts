@@ -2,35 +2,30 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import { Neo4jService, type Neo4jConfig } from "./neo4j-service.js";
+import { GraphService } from "./graph-service.js";
 import { GraphViewProvider } from "./graph-view-provider.js";
-import type { Config } from "../config.js";
 
-let neo4jService: Neo4jService | undefined;
+let graphService: GraphService | undefined;
 let graphViewProvider: GraphViewProvider | undefined;
-
-function getNeo4jConfig(): Neo4jConfig {
-  const config = vscode.workspace.getConfiguration("graphrepo");
-  return {
-    uri: config.get("neo4j.uri", "bolt://localhost:7687"),
-    username: config.get("neo4j.username", "neo4j"),
-    password: config.get("neo4j.password", "graphrepo-password"),
-    database: config.get("neo4j.database", "neo4j"),
-  };
-}
-
-function getService(): Neo4jService {
-  if (!neo4jService) {
-    neo4jService = new Neo4jService(getNeo4jConfig());
-  }
-  return neo4jService;
-}
+let statusBarItem: vscode.StatusBarItem | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  const service = getService();
+  // Initialize the embedded graph service — no Neo4j, no Docker!
+  const storagePath = context.globalStorageUri.fsPath;
+  graphService = new GraphService(storagePath);
+
+  // Status bar: shows graph status + click to parse
+  statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    50
+  );
+  statusBarItem.command = "graphrepo.parseWorkspace";
+  updateStatusBar();
+  statusBarItem.show();
+  context.subscriptions.push(statusBarItem);
 
   // Register the sidebar webview provider
-  graphViewProvider = new GraphViewProvider(context.extensionUri, service);
+  graphViewProvider = new GraphViewProvider(context.extensionUri, graphService);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       GraphViewProvider.viewType,
@@ -58,34 +53,6 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       const repoPath = workspaceFolder.uri.fsPath;
-      const neo4jConfig = getNeo4jConfig();
-
-      const config: Config = {
-        neo4j: neo4jConfig,
-        repoPath,
-        ignorePaths: [
-          "node_modules",
-          ".git",
-          "dist",
-          "build",
-          "__pycache__",
-          ".venv",
-          ".next",
-          "coverage",
-          ".cache",
-        ],
-        supportedExtensions: [
-          ".ts", ".tsx", ".js", ".jsx", ".py",
-          ".json", ".md", ".mdx",
-          ".css", ".scss", ".less",
-          ".html", ".htm", ".svg",
-          ".png", ".jpg", ".jpeg", ".gif", ".ico",
-          ".yaml", ".yml", ".toml", ".xml", ".txt",
-          ".sh", ".bash", ".zsh", ".bat", ".cmd", ".ps1",
-          ".sql", ".graphql", ".gql", ".proto",
-          ".lock",
-        ],
-      };
 
       await vscode.window.withProgress(
         {
@@ -96,9 +63,35 @@ export function activate(context: vscode.ExtensionContext) {
         async (progress) => {
           try {
             progress.report({ message: "Analyzing files..." });
+            statusBarItem!.text = "$(loading~spin) GraphRepo: Parsing...";
 
             const { parseRepository } = await import("../parser/index.js");
-            const { syncToNeo4j } = await import("../graph/index.js");
+
+            const config = {
+              neo4j: { uri: "", username: "", password: "", database: "" },
+              repoPath,
+              ignorePaths: [
+                "node_modules",
+                ".git",
+                "dist",
+                "build",
+                "__pycache__",
+                ".venv",
+                ".next",
+                "coverage",
+                ".cache",
+              ],
+              supportedExtensions: [
+                ".ts", ".tsx", ".js", ".jsx", ".py",
+                ".json", ".md", ".mdx",
+                ".css", ".scss", ".less",
+                ".html", ".htm", ".svg",
+                ".yaml", ".yml", ".toml", ".xml", ".txt",
+                ".sh", ".bash", ".zsh", ".bat", ".cmd", ".ps1",
+                ".sql", ".graphql", ".gql", ".proto",
+                ".lock",
+              ],
+            };
 
             const parsed = await parseRepository(config, (info: { current: number; total: number; file: string }) => {
               progress.report({
@@ -107,8 +100,14 @@ export function activate(context: vscode.ExtensionContext) {
               });
             });
 
-            progress.report({ message: "Syncing to Neo4j..." });
-            const result = await syncToNeo4j(parsed, config);
+            progress.report({ message: "Building graph..." });
+            const result = graphService!.syncParsedRepo(parsed, repoPath);
+
+            progress.report({ message: "Detecting communities..." });
+            graphService!.detectCommunities();
+
+            updateStatusBar();
+            graphViewProvider?.refresh();
 
             vscode.window.showInformationMessage(
               `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes`
@@ -116,6 +115,7 @@ export function activate(context: vscode.ExtensionContext) {
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             vscode.window.showErrorMessage(`GraphRepo parse failed: ${msg}`);
+            updateStatusBar();
           }
         }
       );
@@ -127,6 +127,17 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "graphrepo.searchCodeGraph",
       async () => {
+        if (!graphService?.hasData()) {
+          const action = await vscode.window.showInformationMessage(
+            "No graph data yet. Parse your workspace first?",
+            "Parse Now"
+          );
+          if (action === "Parse Now") {
+            vscode.commands.executeCommand("graphrepo.parseWorkspace");
+          }
+          return;
+        }
+
         const quickPick = vscode.window.createQuickPick();
         quickPick.placeholder = "Search functions, classes, interfaces...";
         quickPick.matchOnDescription = true;
@@ -135,14 +146,14 @@ export function activate(context: vscode.ExtensionContext) {
 
         quickPick.onDidChangeValue((value) => {
           clearTimeout(debounce);
-          debounce = setTimeout(async () => {
+          debounce = setTimeout(() => {
             if (!value.trim()) {
               quickPick.items = [];
               return;
             }
             quickPick.busy = true;
             try {
-              const results = await service.searchNodes(value);
+              const results = graphService!.searchNodes(value);
               quickPick.items = results.map((r) => ({
                 label: `$(symbol-${getSymbolIcon(r.type)}) ${r.name}`,
                 description: r.qualifiedName,
@@ -155,13 +166,12 @@ export function activate(context: vscode.ExtensionContext) {
               ];
             }
             quickPick.busy = false;
-          }, 200);
+          }, 150);
         });
 
         quickPick.onDidAccept(() => {
           const selected = quickPick.selectedItems[0] as any;
           if (selected?.id && graphViewProvider) {
-            // Focus the sidebar view and center on the node
             vscode.commands.executeCommand("graphrepo.graphView.focus");
             setTimeout(() => graphViewProvider!.centerOnNode(selected.id), 500);
           }
@@ -181,6 +191,24 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // Command: Clear graph data
+  context.subscriptions.push(
+    vscode.commands.registerCommand("graphrepo.clearGraph", async () => {
+      const confirm = await vscode.window.showWarningMessage(
+        "Clear all graph data?",
+        { modal: true },
+        "Clear"
+      );
+      if (confirm === "Clear") {
+        graphService!.getGraph().clear();
+        graphService!.saveNow();
+        graphViewProvider?.refresh();
+        updateStatusBar();
+        vscode.window.showInformationMessage("GraphRepo: Graph cleared.");
+      }
+    })
+  );
+
   // --- Editor tracking: sync graph view to active file/cursor ---
   const getRelativePath = (uri: vscode.Uri): string | null => {
     const ws = vscode.workspace.getWorkspaceFolder(uri);
@@ -196,7 +224,7 @@ export function activate(context: vscode.ExtensionContext) {
     trackDebounce = setTimeout(() => {
       const rel = getRelativePath(editor.document.uri);
       if (!rel) return;
-      const line = editor.selection.active.line + 1; // VS Code is 0-based, graph is 1-based
+      const line = editor.selection.active.line + 1;
       graphViewProvider?.trackEditor(rel, line);
     }, 300);
   };
@@ -204,7 +232,6 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(trackEditor)
   );
-
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorSelection((e) => {
       trackEditor(e.textEditor);
@@ -231,7 +258,6 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   try {
-    // Create the file if it doesn't exist so we can watch it
     if (!fs.existsSync(mcpEventFile)) {
       fs.writeFileSync(mcpEventFile, "{}");
     }
@@ -239,6 +265,33 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push({ dispose: () => watcher.close() });
   } catch {
     // If we can't watch, MCP visualization just won't work — non-critical
+  }
+
+  // Auto-prompt to parse if no data exists for this workspace
+  if (!graphService.hasData() && vscode.workspace.workspaceFolders?.length) {
+    vscode.window
+      .showInformationMessage(
+        "GraphRepo: Parse this workspace to build a code graph?",
+        "Parse Now",
+        "Later"
+      )
+      .then((action) => {
+        if (action === "Parse Now") {
+          vscode.commands.executeCommand("graphrepo.parseWorkspace");
+        }
+      });
+  }
+}
+
+function updateStatusBar(): void {
+  if (!statusBarItem || !graphService) return;
+  if (graphService.hasData()) {
+    const summary = graphService.getRepoSummary();
+    statusBarItem.text = `$(graph) GraphRepo: ${summary.fileCount} files`;
+    statusBarItem.tooltip = `${summary.funcCount} functions, ${summary.classCount} classes — click to re-parse`;
+  } else {
+    statusBarItem.text = "$(graph) GraphRepo: No data";
+    statusBarItem.tooltip = "Click to parse workspace";
   }
 }
 
@@ -255,6 +308,6 @@ function getSymbolIcon(type: string): string {
 }
 
 export function deactivate() {
-  neo4jService?.dispose();
-  neo4jService = undefined;
+  graphService?.dispose();
+  graphService = undefined;
 }

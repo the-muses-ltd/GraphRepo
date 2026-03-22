@@ -1,8 +1,8 @@
 {
   "name": "graphrepo",
   "displayName": "GraphRepo",
-  "version": "0.1.0",
-  "description": "Neo4j + GraphRAG powered tool for visualizing and querying code repositories",
+  "version": "0.2.0",
+  "description": "Self-contained code graph visualization and querying — 1-click setup, no Docker or CLI required",
   "publisher": "the-muses-ltd",
   "repository": {
     "type": "git",
@@ -16,7 +16,9 @@
     "Visualization",
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension/extension.cjs",
   "contributes": {
     "viewsContainers": {
@@ -46,12 +48,18 @@
       {
         "command": "graphrepo.searchCodeGraph",
         "title": "GraphRepo: Search Code Graph",
-        "icon": "$(search)"
+        "icon": "$(search)",
+        "enablement": "graphrepo.hasData"
       },
       {
         "command": "graphrepo.refreshGraph",
         "title": "GraphRepo: Refresh Graph",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "graphrepo.clearGraph",
+        "title": "GraphRepo: Clear Graph Data",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -71,30 +79,37 @@
           "when": "view == graphrepo.graphView",
           "group": "navigation@3"
         }
+      ],
+      "commandPalette": [
+        {
+          "command": "graphrepo.clearGraph",
+          "when": "graphrepo.hasData"
+        }
       ]
     },
     "configuration": {
       "title": "GraphRepo",
       "properties": {
-        "graphrepo.neo4j.uri": {
-          "type": "string",
-          "default": "bolt://localhost:7687",
-          "description": "Neo4j connection URI"
+        "graphrepo.autoParseOnOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically parse workspace when opened (if no existing graph data)"
         },
-        "graphrepo.neo4j.username": {
-          "type": "string",
-          "default": "neo4j",
-          "description": "Neo4j username"
-        },
-        "graphrepo.neo4j.password": {
-          "type": "string",
-          "default": "graphrepo-password",
-          "description": "Neo4j password"
-        },
-        "graphrepo.neo4j.database": {
-          "type": "string",
-          "default": "neo4j",
-          "description": "Neo4j database name"
+        "graphrepo.ignorePaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "node_modules",
+            ".git",
+            "dist",
+            "build",
+            "__pycache__",
+            ".venv",
+            ".next",
+            "coverage",
+            ".cache"
+          ],
+          "description": "Paths to ignore when parsing the workspace"
         }
       }
     }
