@@ -60,9 +60,11 @@ export class GraphRenderer {
     this.simulation = d3
       .forceSimulation<SimNode, SimLink>()
       .force("link", d3.forceLink<SimNode, SimLink>().id((d) => d.id).distance(40))
-      .force("charge", d3.forceManyBody().strength(-60))
+      .force("charge", d3.forceManyBody().strength(-80))
       .force("center", d3.forceCenter())
-      .force("radial", d3.forceRadial(200).strength(0.05))
+      .force("radial", d3.forceRadial(200).strength(0.08))
+      .force("x", d3.forceX().strength(0.03))
+      .force("y", d3.forceY().strength(0.03))
       .force("collision", d3.forceCollide().radius(12));
 
     this.zoomBehavior = zoom<SVGSVGElement, unknown>()
@@ -85,12 +87,13 @@ export class GraphRenderer {
     (this.simulation.force("center") as d3.ForceCenter<SimNode>)
       ?.x(cx)
       .y(cy);
-    // Scale radial force based on node count for a tighter sphere
-    const radius = Math.min(width, height) * 0.35;
+    const radius = Math.min(width, height) * 0.3;
     (this.simulation.force("radial") as d3.ForceRadial<SimNode>)
       ?.x(cx)
       .y(cy)
       .radius(radius);
+    (this.simulation.force("x") as d3.ForceX<SimNode>)?.x(cx);
+    (this.simulation.force("y") as d3.ForceY<SimNode>)?.y(cy);
   }
 
   setOnNodeClick(callback: (node: GraphNode) => void) {
@@ -180,14 +183,18 @@ export class GraphRenderer {
       .text((d) => d.name ?? "")
       .attr("dy", (d) => -(NODE_RADIUS[d.labels?.[0] ?? ""] ?? 5) - 4);
 
-    // Setup simulation — scale radial force to node count for sphere-like distribution
+    // Scale radial force to node count for sphere-like distribution
     const width = this.svg.node()!.clientWidth;
     const height = this.svg.node()!.clientHeight;
-    const radius = Math.max(80, Math.sqrt(this.nodes.length) * 12);
+    const cx = width / 2;
+    const cy = height / 2;
+    const radius = Math.max(80, Math.sqrt(this.nodes.length) * 10);
     (this.simulation.force("radial") as d3.ForceRadial<SimNode>)
       ?.radius(radius)
-      .x(width / 2)
-      .y(height / 2);
+      .x(cx)
+      .y(cy);
+    (this.simulation.force("x") as d3.ForceX<SimNode>)?.x(cx);
+    (this.simulation.force("y") as d3.ForceY<SimNode>)?.y(cy);
 
     this.simulation.nodes(this.nodes).on("tick", () => this.tick());
     (this.simulation.force("link") as d3.ForceLink<SimNode, SimLink>).links(this.links);
