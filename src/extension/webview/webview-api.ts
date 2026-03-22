@@ -8,6 +8,7 @@ export type GraphNode = {
   lineCount: number | null;
   startLine: number | null;
   kind: string | null;
+  communityId: string | null;
 };
 
 export type GraphEdge = {

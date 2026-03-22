@@ -167,3 +167,32 @@ export const mergeModuleNodes = async (
     { modules: externalModules }
   );
 };
+
+export const mergeFolderNodes = async (
+  session: Session,
+  files: ParsedFile[]
+): Promise<void> => {
+  // Extract all unique folder paths from files
+  const folders = new Set<string>();
+  for (const f of files) {
+    const parts = f.path.split("/");
+    // Build each parent folder path
+    for (let i = 1; i < parts.length; i++) {
+      folders.add(parts.slice(0, i).join("/"));
+    }
+  }
+
+  if (folders.size === 0) return;
+
+  const folderList = [...folders].map((fp) => ({
+    path: fp,
+    name: fp.split("/").pop() ?? fp,
+  }));
+
+  await session.run(
+    `UNWIND $folders AS f
+     MERGE (folder:Folder {path: f.path})
+     SET folder.name = f.name`,
+    { folders: folderList }
+  );
+};

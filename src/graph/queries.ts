@@ -121,38 +121,34 @@ export const getRepoSummary = () => ({
 export const getGraphData = (
   nodeTypes: string[] | null,
   limit: number
-) => ({
-  cypher: nodeTypes
-    ? `MATCH (n)
-       WHERE any(label IN labels(n) WHERE label IN $nodeTypes)
+) => {
+  const nodeFilter = nodeTypes
+    ? `WHERE any(label IN labels(n) WHERE label IN $nodeTypes) AND NOT n:Community`
+    : `WHERE NOT n:Community`;
+
+  return {
+    cypher: `MATCH (n)
+       ${nodeFilter}
        WITH n LIMIT toInteger($limit)
+       OPTIONAL MATCH (n)-[:BELONGS_TO_COMMUNITY]->(c:Community {level: 1})
+       WITH n, c.id AS communityId
        OPTIONAL MATCH (n)-[r]-(m)
-       WHERE any(label IN labels(m) WHERE label IN $nodeTypes)
+       WHERE NOT m:Community
+       ${nodeTypes ? `AND any(label IN labels(m) WHERE label IN $nodeTypes)` : ""}
        RETURN collect(DISTINCT {
          id: elementId(n), labels: labels(n), name: n.name,
          qualifiedName: n.qualifiedName, path: n.path,
          language: n.language, lineCount: n.lineCount,
-         startLine: n.startLine, kind: n.kind
-       }) AS nodes,
-       collect(DISTINCT {
-         source: elementId(startNode(r)), target: elementId(endNode(r)),
-         type: type(r)
-       }) AS edges`
-    : `MATCH (n)
-       WITH n LIMIT toInteger($limit)
-       OPTIONAL MATCH (n)-[r]-(m)
-       RETURN collect(DISTINCT {
-         id: elementId(n), labels: labels(n), name: n.name,
-         qualifiedName: n.qualifiedName, path: n.path,
-         language: n.language, lineCount: n.lineCount,
-         startLine: n.startLine, kind: n.kind
+         startLine: n.startLine, kind: n.kind,
+         communityId: communityId
        }) AS nodes,
        collect(DISTINCT {
          source: elementId(startNode(r)), target: elementId(endNode(r)),
          type: type(r)
        }) AS edges`,
-  params: { nodeTypes, limit },
-});
+    params: { nodeTypes, limit },
+  };
+};
 
 export const searchNodes = (query: string) => ({
   cypher: `CALL db.index.fulltext.queryNodes("code_search", $query)

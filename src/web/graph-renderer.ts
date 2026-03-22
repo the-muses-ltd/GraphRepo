@@ -11,7 +11,16 @@ const NODE_COLORS: Record<string, string> = {
   Interface: "#AB47BC",
   Variable: "#26A69A",
   Module: "#78909C",
+  Folder: "#FF7043",
 };
+
+// Distinct colors for community visualization
+const COMMUNITY_COLORS = [
+  "#e6194b", "#3cb44b", "#ffe119", "#4363d8", "#f58231",
+  "#911eb4", "#42d4f4", "#f032e6", "#bfef45", "#fabed4",
+  "#469990", "#dcbeff", "#9A6324", "#800000", "#aaffc3",
+  "#808000", "#ffd8b1", "#000075", "#a9a9a9", "#e6beff",
+];
 
 const NODE_RADIUS: Record<string, number> = {
   File: 8,
@@ -20,6 +29,7 @@ const NODE_RADIUS: Record<string, number> = {
   Function: 5,
   Variable: 4,
   Module: 6,
+  Folder: 9,
 };
 
 type SimNode = GraphNode & d3.SimulationNodeDatum;
@@ -38,12 +48,14 @@ export class GraphRenderer {
   private visibleRelTypes: Set<string>;
   private onNodeClick: ((node: GraphNode) => void) | null = null;
   private tooltip: HTMLElement;
+  private colorByCommunity: boolean = false;
+  private communityColorMap = new Map<string, string>();
 
   constructor(svgSelector: string, tooltipSelector: string) {
     this.svg = select<SVGSVGElement, unknown>(svgSelector);
     this.g = this.svg.append("g");
     this.tooltip = document.querySelector(tooltipSelector)!;
-    this.visibleRelTypes = new Set(["CONTAINS", "IMPORTS", "CALLS", "HAS_METHOD", "EXTENDS", "IMPORTS_EXTERNAL"]);
+    this.visibleRelTypes = new Set(["CONTAINS", "IMPORTS", "CALLS", "HAS_METHOD", "EXTENDS", "IMPORTS_EXTERNAL", "CONTAINS_FILE", "CONTAINS_FOLDER"]);
 
     this.simulation = d3
       .forceSimulation<SimNode, SimLink>()
@@ -79,6 +91,25 @@ export class GraphRenderer {
   setVisibleRelTypes(types: Set<string>) {
     this.visibleRelTypes = types;
     this.updateVisibility();
+  }
+
+  setColorByCommunity(enabled: boolean) {
+    this.colorByCommunity = enabled;
+    // Re-color existing nodes
+    this.nodeElements
+      ?.select("circle")
+      .attr("fill", (d) => this.getNodeColor(d));
+  }
+
+  private getNodeColor(node: SimNode): string {
+    if (this.colorByCommunity && node.communityId) {
+      if (!this.communityColorMap.has(node.communityId)) {
+        const idx = this.communityColorMap.size % COMMUNITY_COLORS.length;
+        this.communityColorMap.set(node.communityId, COMMUNITY_COLORS[idx]);
+      }
+      return this.communityColorMap.get(node.communityId)!;
+    }
+    return NODE_COLORS[node.labels?.[0] ?? ""] ?? "#666";
   }
 
   render(data: GraphData) {
@@ -117,10 +148,19 @@ export class GraphRenderer {
       .attr("class", "node")
       .call(this.dragBehavior());
 
+    // Build community color map from data
+    this.communityColorMap.clear();
+    for (const node of this.nodes) {
+      if (node.communityId && !this.communityColorMap.has(node.communityId)) {
+        const idx = this.communityColorMap.size % COMMUNITY_COLORS.length;
+        this.communityColorMap.set(node.communityId, COMMUNITY_COLORS[idx]);
+      }
+    }
+
     this.nodeElements
       .append("circle")
       .attr("r", (d) => NODE_RADIUS[d.labels?.[0] ?? ""] ?? 5)
-      .attr("fill", (d) => NODE_COLORS[d.labels?.[0] ?? ""] ?? "#666")
+      .attr("fill", (d) => this.getNodeColor(d))
       .on("mouseover", (_event, d) => this.showTooltip(d))
       .on("mousemove", (event) => this.moveTooltip(event))
       .on("mouseout", () => this.hideTooltip())

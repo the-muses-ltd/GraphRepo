@@ -8,6 +8,7 @@ import {
   mergeClassNodes,
   mergeInterfaceNodes,
   mergeModuleNodes,
+  mergeFolderNodes,
 } from "./nodes.js";
 import {
   createContainsRelationships,
@@ -15,6 +16,7 @@ import {
   createImportRelationships,
   createCallRelationships,
   createExtendsRelationships,
+  createFolderRelationships,
 } from "./relationships.js";
 
 export type SyncResult = {
@@ -54,6 +56,9 @@ export const syncToNeo4j = async (
     console.log("Merging module nodes...");
     await mergeModuleNodes(session, parsed.externalModules);
 
+    console.log("Merging folder nodes...");
+    await mergeFolderNodes(session, parsed.files);
+
     console.log("Creating CONTAINS relationships...");
     await createContainsRelationships(session, parsed.files);
 
@@ -68,6 +73,9 @@ export const syncToNeo4j = async (
 
     console.log("Creating EXTENDS relationships...");
     await createExtendsRelationships(session, parsed.files);
+
+    console.log("Creating folder relationships...");
+    await createFolderRelationships(session, parsed.files);
 
     const functionCount = parsed.files.reduce(
       (sum, f) => sum + f.functions.length + f.classes.reduce((s, c) => s + c.methods.length, 0),

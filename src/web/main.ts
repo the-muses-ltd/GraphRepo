@@ -128,6 +128,12 @@ const getTypeColor = (type: string): string => {
   return colors[type] ?? "#666";
 };
 
+// --- Community Color Toggle ---
+const communityToggle = document.getElementById("community-color-toggle") as HTMLInputElement;
+communityToggle.addEventListener("change", () => {
+  renderer.setColorByCommunity(communityToggle.checked);
+});
+
 // --- Event Listeners ---
 reloadBtn.addEventListener("click", loadGraph);
 

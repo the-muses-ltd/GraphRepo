@@ -172,6 +172,8 @@ input[type="range"] {
 .link.HAS_METHOD { stroke: #666; }
 .link.EXTENDS { stroke: #FBBC05; }
 .link.IMPORTS_EXTERNAL { stroke: #78909C; }
+.link.CONTAINS_FILE { stroke: #FF7043; }
+.link.CONTAINS_FOLDER { stroke: #BF360C; }
 
 .link.highlighted {
   stroke-opacity: 0.9;

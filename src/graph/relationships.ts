@@ -218,6 +218,58 @@ export const createCallRelationships = async (
   );
 };
 
+export const createFolderRelationships = async (
+  session: Session,
+  files: ParsedFile[]
+): Promise<void> => {
+  // Folder -[CONTAINS_FILE]-> File
+  const folderFiles = files.map((f) => {
+    const parts = f.path.split("/");
+    const folderPath = parts.slice(0, -1).join("/");
+    return { folderPath, filePath: f.path };
+  }).filter((r) => r.folderPath);
+
+  if (folderFiles.length > 0) {
+    await session.run(
+      `UNWIND $rels AS r
+       MATCH (folder:Folder {path: r.folderPath})
+       MATCH (file:File {path: r.filePath})
+       MERGE (folder)-[:CONTAINS_FILE]->(file)`,
+      { rels: folderFiles }
+    );
+  }
+
+  // Folder -[CONTAINS_FOLDER]-> Folder (parent -> child)
+  const folders = new Set<string>();
+  for (const f of files) {
+    const parts = f.path.split("/");
+    for (let i = 1; i < parts.length; i++) {
+      folders.add(parts.slice(0, i).join("/"));
+    }
+  }
+
+  const folderParents = [...folders]
+    .filter((fp) => fp.includes("/"))
+    .map((fp) => {
+      const parts = fp.split("/");
+      return {
+        parentPath: parts.slice(0, -1).join("/"),
+        childPath: fp,
+      };
+    })
+    .filter((r) => folders.has(r.parentPath));
+
+  if (folderParents.length > 0) {
+    await session.run(
+      `UNWIND $rels AS r
+       MATCH (parent:Folder {path: r.parentPath})
+       MATCH (child:Folder {path: r.childPath})
+       MERGE (parent)-[:CONTAINS_FOLDER]->(child)`,
+      { rels: folderParents }
+    );
+  }
+};
+
 export const createExtendsRelationships = async (
   session: Session,
   files: ParsedFile[]

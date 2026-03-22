@@ -40,7 +40,18 @@
               <input type="checkbox" data-type="Module" checked />
               <span class="dot" style="background: #78909C"></span> Modules
             </label>
+            <label class="filter-item">
+              <input type="checkbox" data-type="Folder" checked />
+              <span class="dot" style="background: #FF7043"></span> Folders
+            </label>
           </div>
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-label">Color Mode</div>
+          <label class="filter-item">
+            <input type="checkbox" id="community-color-toggle" />
+            Color by community
+          </label>
         </div>
         <div class="filter-group">
           <div class="filter-group-label">Relationships</div>
@@ -68,6 +79,14 @@
             <label class="filter-item">
               <input type="checkbox" data-rel="IMPORTS_EXTERNAL" checked />
               EXTERNAL
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-rel="CONTAINS_FILE" checked />
+              CONTAINS_FILE
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-rel="CONTAINS_FOLDER" checked />
+              CONTAINS_FOLDER
             </label>
           </div>
         </div>
