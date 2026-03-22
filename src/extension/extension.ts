@@ -72,7 +72,17 @@ export function activate(context: vscode.ExtensionContext) {
           "coverage",
           ".cache",
         ],
-        supportedExtensions: [".ts", ".tsx", ".js", ".jsx", ".py"],
+        supportedExtensions: [
+          ".ts", ".tsx", ".js", ".jsx", ".py",
+          ".json", ".md", ".mdx",
+          ".css", ".scss", ".less",
+          ".html", ".htm", ".svg",
+          ".png", ".jpg", ".jpeg", ".gif", ".ico",
+          ".yaml", ".yml", ".toml", ".xml", ".txt",
+          ".sh", ".bash", ".zsh", ".bat", ".cmd", ".ps1",
+          ".sql", ".graphql", ".gql", ".proto",
+          ".lock",
+        ],
       };
 
       await vscode.window.withProgress(

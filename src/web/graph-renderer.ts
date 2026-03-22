@@ -48,7 +48,7 @@ export class GraphRenderer {
   private visibleRelTypes: Set<string>;
   private onNodeClick: ((node: GraphNode) => void) | null = null;
   private tooltip: HTMLElement;
-  private colorByCommunity: boolean = false;
+  private colorByCommunity: boolean = true;
   private communityColorMap = new Map<string, string>();
 
   constructor(svgSelector: string, tooltipSelector: string) {
@@ -59,10 +59,11 @@ export class GraphRenderer {
 
     this.simulation = d3
       .forceSimulation<SimNode, SimLink>()
-      .force("link", d3.forceLink<SimNode, SimLink>().id((d) => d.id).distance(60))
-      .force("charge", d3.forceManyBody().strength(-120))
+      .force("link", d3.forceLink<SimNode, SimLink>().id((d) => d.id).distance(40))
+      .force("charge", d3.forceManyBody().strength(-60))
       .force("center", d3.forceCenter())
-      .force("collision", d3.forceCollide().radius(15));
+      .force("radial", d3.forceRadial(200).strength(0.05))
+      .force("collision", d3.forceCollide().radius(12));
 
     this.zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 8])
@@ -79,9 +80,17 @@ export class GraphRenderer {
   private updateCenter() {
     const width = this.svg.node()!.clientWidth;
     const height = this.svg.node()!.clientHeight;
+    const cx = width / 2;
+    const cy = height / 2;
     (this.simulation.force("center") as d3.ForceCenter<SimNode>)
-      ?.x(width / 2)
-      .y(height / 2);
+      ?.x(cx)
+      .y(cy);
+    // Scale radial force based on node count for a tighter sphere
+    const radius = Math.min(width, height) * 0.35;
+    (this.simulation.force("radial") as d3.ForceRadial<SimNode>)
+      ?.x(cx)
+      .y(cy)
+      .radius(radius);
   }
 
   setOnNodeClick(callback: (node: GraphNode) => void) {
@@ -171,7 +180,15 @@ export class GraphRenderer {
       .text((d) => d.name ?? "")
       .attr("dy", (d) => -(NODE_RADIUS[d.labels?.[0] ?? ""] ?? 5) - 4);
 
-    // Setup simulation
+    // Setup simulation — scale radial force to node count for sphere-like distribution
+    const width = this.svg.node()!.clientWidth;
+    const height = this.svg.node()!.clientHeight;
+    const radius = Math.max(80, Math.sqrt(this.nodes.length) * 12);
+    (this.simulation.force("radial") as d3.ForceRadial<SimNode>)
+      ?.radius(radius)
+      .x(width / 2)
+      .y(height / 2);
+
     this.simulation.nodes(this.nodes).on("tick", () => this.tick());
     (this.simulation.force("link") as d3.ForceLink<SimNode, SimLink>).links(this.links);
     this.simulation.alpha(1).restart();

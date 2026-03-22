@@ -3,6 +3,12 @@ import path from "path";
 import type { Config } from "../config.js";
 import { EXTENSION_TO_LANGUAGE, type Language } from "../types.js";
 
+const BINARY_EXTENSIONS = new Set([
+  ".png", ".jpg", ".jpeg", ".gif", ".ico", ".bmp", ".webp",
+  ".svg", ".woff", ".woff2", ".ttf", ".eot", ".otf",
+  ".lock",
+]);
+
 export type WalkedFile = {
   path: string; // relative to repo root
   absolutePath: string;
@@ -41,12 +47,12 @@ export async function* walkRepository(
         const ext = path.extname(entry.name);
         if (!supportedExtensions.includes(ext)) continue;
 
-        const language = EXTENSION_TO_LANGUAGE[ext];
+        const language = EXTENSION_TO_LANGUAGE[ext] ?? (supportedExtensions.includes(ext) ? "other" as Language : null);
         if (!language) continue;
 
         try {
-          const content = await fs.readFile(fullPath, "utf-8");
           const stat = await fs.stat(fullPath);
+          const content = BINARY_EXTENSIONS.has(ext) ? "" : await fs.readFile(fullPath, "utf-8");
           yield {
             path: relativePath,
             absolutePath: fullPath,

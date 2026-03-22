@@ -41,23 +41,41 @@ export const parseRepository = async (
     onProgress?.({ file: file.path, current: i + 1, total });
 
     try {
-      const parser = await getParser(file.language);
-      const parsed = extractFromFile(
-        file.path,
-        file.content,
-        file.language,
-        parser
-      );
+      const codeLanguages = ["typescript", "javascript", "python"];
+      if (codeLanguages.includes(file.language)) {
+        const parser = await getParser(file.language as "typescript" | "javascript" | "python");
+        const parsed = extractFromFile(
+          file.path,
+          file.content,
+          file.language,
+          parser
+        );
 
-      // Resolve import paths
-      parsed.imports = resolveImports(
-        parsed.imports,
-        file.path,
-        allFilePaths,
-        file.language
-      );
+        // Resolve import paths
+        parsed.imports = resolveImports(
+          parsed.imports,
+          file.path,
+          allFilePaths,
+          file.language
+        );
 
-      files.push(parsed);
+        files.push(parsed);
+      } else {
+        // Non-code file: add as a File node with no functions/classes
+        const lineCount = file.content ? file.content.split("\n").length : 0;
+        files.push({
+          path: file.path,
+          language: file.language,
+          size: 0,
+          lineCount,
+          functions: [],
+          classes: [],
+          interfaces: [],
+          variables: [],
+          imports: [],
+          exports: [],
+        });
+      }
     } catch (err) {
       console.error(`Failed to parse ${file.path}:`, err);
     }

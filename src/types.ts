@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const LanguageSchema = z.enum(["typescript", "javascript", "python"]);
+export const LanguageSchema = z.enum(["typescript", "javascript", "python", "json", "markdown", "css", "html", "other"]);
 export type Language = z.infer<typeof LanguageSchema>;
 
 export const EXTENSION_TO_LANGUAGE: Record<string, Language> = {
@@ -9,6 +9,41 @@ export const EXTENSION_TO_LANGUAGE: Record<string, Language> = {
   ".js": "javascript",
   ".jsx": "javascript",
   ".py": "python",
+  ".json": "json",
+  ".md": "markdown",
+  ".mdx": "markdown",
+  ".css": "css",
+  ".scss": "css",
+  ".less": "css",
+  ".html": "html",
+  ".htm": "html",
+  ".svg": "other",
+  ".png": "other",
+  ".jpg": "other",
+  ".jpeg": "other",
+  ".gif": "other",
+  ".ico": "other",
+  ".yaml": "other",
+  ".yml": "other",
+  ".toml": "other",
+  ".xml": "other",
+  ".txt": "other",
+  ".env.example": "other",
+  ".gitignore": "other",
+  ".dockerignore": "other",
+  ".prettierrc": "other",
+  ".eslintrc": "other",
+  ".sh": "other",
+  ".bash": "other",
+  ".zsh": "other",
+  ".bat": "other",
+  ".cmd": "other",
+  ".ps1": "other",
+  ".sql": "other",
+  ".graphql": "other",
+  ".gql": "other",
+  ".proto": "other",
+  ".lock": "other",
 };
 
 // --- Parsed entities (parser output) ---
