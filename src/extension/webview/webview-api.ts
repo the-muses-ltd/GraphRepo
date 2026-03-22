@@ -87,3 +87,8 @@ export const searchCode = (query: string): Promise<SearchResult[]> =>
 
 export const fetchNodeDetails = (id: string): Promise<NodeDetails> =>
   request("fetchNodeDetails", { id });
+
+/** Fire-and-forget message to extension host to open a file */
+export const openFile = (filePath: string, line?: number): void => {
+  vscode.postMessage({ type: "openFile", path: filePath, line: line ?? 1 });
+};

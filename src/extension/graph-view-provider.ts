@@ -8,6 +8,7 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "graphrepo.graphView";
 
   private view?: vscode.WebviewView;
+  private suppressTracking = false;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -30,9 +31,13 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getWebviewContent(webviewView.webview);
 
-    webviewView.webview.onDidReceiveMessage((msg) =>
-      this.handleMessage(msg)
-    );
+    webviewView.webview.onDidReceiveMessage((msg) => {
+      if (msg.type === "openFile") {
+        this.openFileInEditor(msg.path, msg.line);
+      } else {
+        this.handleMessage(msg);
+      }
+    });
   }
 
   private getWebviewContent(webview: vscode.Webview): string {
@@ -93,11 +98,34 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async openFileInEditor(relativePath: string, line?: number): Promise<void> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) return;
+
+    const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, relativePath);
+    try {
+      // Suppress editor tracking to avoid a feedback loop
+      this.suppressTracking = true;
+      const doc = await vscode.workspace.openTextDocument(fileUri);
+      const lineNum = Math.max(0, (line ?? 1) - 1);
+      const range = new vscode.Range(lineNum, 0, lineNum, 0);
+      await vscode.window.showTextDocument(doc, {
+        selection: range,
+        preserveFocus: false,
+      });
+      // Re-enable after a short delay to let events settle
+      setTimeout(() => { this.suppressTracking = false; }, 500);
+    } catch {
+      this.suppressTracking = false;
+    }
+  }
+
   public centerOnNode(nodeId: string): void {
     this.view?.webview.postMessage({ type: "centerOnNode", nodeId });
   }
 
   public trackEditor(relativePath: string, line: number): void {
+    if (this.suppressTracking) return;
     this.view?.webview.postMessage({ type: "trackEditor", path: relativePath, line });
   }
 

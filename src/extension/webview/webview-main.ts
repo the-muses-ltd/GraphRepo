@@ -3,6 +3,7 @@ import {
   fetchGraph,
   searchCode,
   fetchNodeDetails,
+  openFile,
   type GraphNode,
 } from "./webview-api.js";
 
@@ -10,6 +11,7 @@ const renderer = new GraphRenderer("#graph-svg", "#tooltip");
 
 // --- State ---
 let debounceTimer: ReturnType<typeof setTimeout>;
+let followEditor = true;
 
 // --- UI Elements ---
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
@@ -65,6 +67,12 @@ const loadGraph = async () => {
 // --- Node Click Handler ---
 renderer.setOnNodeClick(async (node: GraphNode) => {
   nodeDetails.style.display = "block";
+
+  // Open the file in the editor
+  const filePath = node.path ?? (node.qualifiedName?.substring(0, node.qualifiedName.lastIndexOf(":")) || null);
+  if (filePath) {
+    openFile(filePath, node.startLine ?? 1);
+  }
 
   try {
     const details = await fetchNodeDetails(node.id);
@@ -151,6 +159,14 @@ communityToggle.addEventListener("change", () => {
   renderer.setColorByCommunity(communityToggle.checked);
 });
 
+// --- Follow Editor Toggle ---
+const followEditorToggle = document.getElementById(
+  "follow-editor-toggle"
+) as HTMLInputElement;
+followEditorToggle.addEventListener("change", () => {
+  followEditor = followEditorToggle.checked;
+});
+
 // --- Event Listeners ---
 reloadBtn.addEventListener("click", loadGraph);
 
@@ -170,8 +186,7 @@ window.addEventListener("message", (event) => {
   if (msg.type === "centerOnNode" && msg.nodeId) {
     renderer.centerOnNode(msg.nodeId);
   }
-  if (msg.type === "trackEditor" && msg.path) {
-    // Show tracking status in search input placeholder
+  if (msg.type === "trackEditor" && msg.path && followEditor) {
     const found = renderer.trackEditor(msg.path, msg.line ?? 1);
     searchInput.placeholder = found
       ? `Tracking: ${msg.path}`
