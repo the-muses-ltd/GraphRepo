@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
 import { Neo4jService, type Neo4jConfig } from "./neo4j-service.js";
 import { GraphViewProvider } from "./graph-view-provider.js";
 import type { Config } from "../config.js";
@@ -211,6 +213,33 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Track the currently active editor on activation
   trackEditor(vscode.window.activeTextEditor);
+
+  // --- MCP event watcher: visualize what MCP tools are querying ---
+  const mcpEventFile = path.join(os.tmpdir(), "graphrepo-mcp-events.json");
+  let lastMcpTimestamp = 0;
+
+  const handleMcpEvent = () => {
+    try {
+      const content = fs.readFileSync(mcpEventFile, "utf-8");
+      const event = JSON.parse(content);
+      if (event.timestamp <= lastMcpTimestamp) return;
+      lastMcpTimestamp = event.timestamp;
+      graphViewProvider?.handleMcpEvent(event);
+    } catch {
+      // File doesn't exist yet or parse error — ignore
+    }
+  };
+
+  try {
+    // Create the file if it doesn't exist so we can watch it
+    if (!fs.existsSync(mcpEventFile)) {
+      fs.writeFileSync(mcpEventFile, "{}");
+    }
+    const watcher = fs.watch(mcpEventFile, () => handleMcpEvent());
+    context.subscriptions.push({ dispose: () => watcher.close() });
+  } catch {
+    // If we can't watch, MCP visualization just won't work — non-critical
+  }
 }
 
 function getSymbolIcon(type: string): string {

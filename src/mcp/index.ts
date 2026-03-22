@@ -1,11 +1,30 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import type { Config } from "../config.js";
 import { withSession } from "../graph/connection.js";
 import * as queries from "../graph/queries.js";
 
 const WRITE_KEYWORDS = /\b(CREATE|DELETE|MERGE|SET|REMOVE|DROP|DETACH)\b/i;
+
+const MCP_EVENT_FILE = join(tmpdir(), "graphrepo-mcp-events.json");
+
+/** Write an MCP event so the extension can visualize what's being queried */
+const emitEvent = (tool: string, target: string, targetType: "file" | "function" | "entity" | "query") => {
+  try {
+    writeFileSync(MCP_EVENT_FILE, JSON.stringify({
+      tool,
+      target,
+      targetType,
+      timestamp: Date.now(),
+    }));
+  } catch {
+    // Non-critical — don't break MCP if event write fails
+  }
+};
 
 const runQuery = async (
   config: Config["neo4j"],
@@ -44,6 +63,7 @@ export const createMcpServer = (config: Config): McpServer => {
       limit: z.number().default(20).describe("Maximum results to return"),
     },
     async ({ query, type, limit }) => {
+      emitEvent("search_code", query, "entity");
       try {
         const results = await runQuery(
           config.neo4j,
@@ -75,6 +95,7 @@ export const createMcpServer = (config: Config): McpServer => {
       depth: z.number().default(1).describe("How many levels deep to traverse (1 = direct only)"),
     },
     async ({ filePath, depth }) => {
+      emitEvent("get_dependencies", filePath, "file");
       try {
         const results = await runQuery(
           config.neo4j,
@@ -106,6 +127,7 @@ export const createMcpServer = (config: Config): McpServer => {
       depth: z.number().default(1).describe("How many levels deep to traverse"),
     },
     async ({ filePath, depth }) => {
+      emitEvent("get_dependents", filePath, "file");
       try {
         const results = await runQuery(
           config.neo4j,
@@ -136,6 +158,7 @@ export const createMcpServer = (config: Config): McpServer => {
       filePath: z.string().describe("Relative file path in the repository"),
     },
     async ({ filePath }) => {
+      emitEvent("get_file_structure", filePath, "file");
       try {
         const results = await runQuery(
           config.neo4j,
@@ -171,6 +194,7 @@ export const createMcpServer = (config: Config): McpServer => {
         .describe("Direction: callers, callees, or both"),
     },
     async ({ functionName, depth, direction }) => {
+      emitEvent("get_call_graph", functionName, "function");
       try {
         const results = await runQuery(
           config.neo4j,
@@ -202,6 +226,7 @@ export const createMcpServer = (config: Config): McpServer => {
       maxHops: z.number().default(2).describe("Maximum relationship hops"),
     },
     async ({ entityName, maxHops }) => {
+      emitEvent("find_related", entityName, "entity");
       try {
         const results = await runQuery(
           config.neo4j,
@@ -232,6 +257,7 @@ export const createMcpServer = (config: Config): McpServer => {
       cypher: z.string().describe("Cypher query (read-only)"),
     },
     async ({ cypher }) => {
+      emitEvent("query_graph", cypher.substring(0, 100), "query");
       if (WRITE_KEYWORDS.test(cypher)) {
         return {
           content: [
@@ -272,6 +298,7 @@ export const createMcpServer = (config: Config): McpServer => {
     "Get a high-level summary of the repository: file count, function count, class count, languages, etc.",
     {},
     async () => {
+      emitEvent("get_summary", "repo", "query");
       try {
         const results = await runQuery(config.neo4j, queries.getRepoSummary(defaultRepo));
         return {

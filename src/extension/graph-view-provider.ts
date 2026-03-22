@@ -135,6 +135,10 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ type: "trackEditor", path: relativePath, line });
   }
 
+  public handleMcpEvent(event: { tool: string; target: string; targetType: string }): void {
+    this.view?.webview.postMessage({ type: "mcpEvent", ...event });
+  }
+
   public refresh(): void {
     this.view?.webview.postMessage({ type: "refresh" });
   }

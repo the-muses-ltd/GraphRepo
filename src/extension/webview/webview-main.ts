@@ -12,6 +12,7 @@ const renderer = new GraphRenderer("#graph-svg", "#tooltip");
 // --- State ---
 let debounceTimer: ReturnType<typeof setTimeout>;
 let followEditor = true;
+let followMcp = true;
 
 // --- UI Elements ---
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
@@ -167,6 +168,14 @@ followEditorToggle.addEventListener("change", () => {
   followEditor = followEditorToggle.checked;
 });
 
+// --- Follow MCP Toggle ---
+const followMcpToggle = document.getElementById(
+  "follow-mcp-toggle"
+) as HTMLInputElement;
+followMcpToggle.addEventListener("change", () => {
+  followMcp = followMcpToggle.checked;
+});
+
 // --- Event Listeners ---
 reloadBtn.addEventListener("click", loadGraph);
 
@@ -191,6 +200,14 @@ window.addEventListener("message", (event) => {
     searchInput.placeholder = found
       ? `Tracking: ${msg.path}`
       : `Not in graph: ${msg.path}`;
+  }
+  if (msg.type === "mcpEvent" && followMcp) {
+    searchInput.placeholder = `MCP: ${msg.tool}(${msg.target})`;
+    if (msg.targetType === "file") {
+      renderer.trackEditor(msg.target, 1);
+    } else if (msg.targetType === "function" || msg.targetType === "entity") {
+      renderer.highlightByName(msg.target);
+    }
   }
   if (msg.type === "refresh") {
     loadGraph();

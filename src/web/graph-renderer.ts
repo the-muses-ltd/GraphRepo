@@ -364,6 +364,18 @@ export class GraphRenderer {
     return true;
   }
 
+  /** Find a node by name or qualifiedName and center on it */
+  highlightByName(name: string): boolean {
+    const node = this.nodes.find(
+      (n) => n.name === name || n.qualifiedName === name
+        || n.qualifiedName?.endsWith(`:${name}`)
+    );
+    if (!node) return false;
+    if (this.selectedNodeId === node.id) return true;
+    this.centerOnNode(node.id);
+    return true;
+  }
+
   centerOnNode(nodeId: string) {
     const node = this.nodes.find((n) => n.id === nodeId);
     if (!node || node.x == null || node.y == null) return;
