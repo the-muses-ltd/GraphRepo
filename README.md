@@ -22,38 +22,59 @@ AI assistants read files one at a time. They can't see how your code connects �
 - **Shows MCP activity** — watch the graph light up in real time as your AI assistant queries it
 - **Supports multiple repos** — parse as many projects as you want into the same graph, each scoped by name
 
-## Quick start
+## Getting Started
+
+### 1. Start Neo4j
+
+GraphRepo uses Neo4j as its graph database. The easiest way to run it is with Docker:
 
 ```bash
-# 1. Start Neo4j
 docker compose up -d
-
-# 2. Install dependencies
-npm install
-
-# 3. Configure environment
-cp .env.example .env
-
-# 4. Parse a repository
-npm run parse -- /path/to/your/repo
-
-# 5. Open the visualization
-npm run build:web
-npm run viz
 ```
 
-Then open [http://localhost:3000](http://localhost:3000) to explore your repo as a graph.
+### 2. Install the VS Code Extension
 
-## Connect to Claude
+Clone this repo, install dependencies, and build the extension:
 
-Add this to your Claude Desktop, Claude Code `.mcp.json`, or any MCP-compatible client:
+```bash
+git clone https://github.com/the-muses-ltd/GraphRepo.git
+cd GraphRepo
+npm install
+npm run build:vscode
+```
+
+Then install the extension in VS Code:
+
+- Open VS Code
+- Press `Ctrl+Shift+P` → **Extensions: Install from VSIX...**
+- Select the generated `graphrepo-0.1.0.vsix` file
+
+Or install from the command line:
+
+```bash
+code --install-extension graphrepo-0.1.0.vsix
+```
+
+### 3. Parse your repo
+
+Open any project in VS Code. In the GraphRepo sidebar panel, click the **play button** to parse the current workspace into the graph. The graph view will populate automatically.
+
+You can also parse from the command line:
+
+```bash
+npm run parse -- /path/to/your/repo
+```
+
+### 4. Connect your AI assistant
+
+Add a `.mcp.json` to any project root to give your AI assistant access to the graph:
 
 ```json
 {
   "mcpServers": {
     "graphrepo": {
       "command": "npx",
-      "args": ["tsx", "<absolute-path>/src/cli/index.ts", "serve"],
+      "args": ["tsx", "<absolute-path-to-graphrepo>/src/cli/index.ts", "serve"],
       "env": {
         "NEO4J_URI": "bolt://localhost:7687",
         "NEO4J_USERNAME": "neo4j",
@@ -64,7 +85,7 @@ Add this to your Claude Desktop, Claude Code `.mcp.json`, or any MCP-compatible 
 }
 ```
 
-Once connected, your AI assistant can use tools like `search_code`, `get_call_graph`, `get_dependencies`, and `query_graph` to understand your codebase structure — traversing relationships that would be invisible from reading files alone.
+This works with Claude Code, Claude Desktop, or any MCP-compatible client. Once connected, your AI assistant can traverse your code graph — tracing call chains, walking dependency trees, and understanding relationships that would be invisible from reading files alone.
 
 ## MCP Tools
 
