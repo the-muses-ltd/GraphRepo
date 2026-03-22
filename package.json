@@ -97,6 +97,7 @@
   },
   "scripts": {
     "parse": "tsx src/cli/index.ts parse",
+    "communities": "tsx src/cli/index.ts communities",
     "serve": "tsx src/cli/index.ts serve",
     "viz": "tsx src/cli/index.ts viz",
     "build:web": "esbuild src/web/main.ts --bundle --outfile=dist/web/bundle.js --format=esm --platform=browser && cp src/web/index.html src/web/styles.css dist/web/",
@@ -118,6 +119,9 @@
     "d3-zoom": "^3.0.0",
     "dotenv": "^16.4.0",
     "fastify": "^5.0.0",
+    "graphology": "^0.26.0",
+    "graphology-communities-louvain": "^2.0.2",
+    "graphology-types": "^0.24.8",
     "neo4j-driver": "^5.27.0",
     "tree-sitter-wasms": "^0.1.13",
     "web-tree-sitter": "^0.25.0",

@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { parseCommand } from "./commands/parse.js";
 import { serveCommand } from "./commands/serve.js";
 import { vizCommand } from "./commands/viz.js";
+import { communitiesCommand } from "./commands/communities.js";
 
 const program = new Command()
   .name("graphrepo")
@@ -29,5 +30,11 @@ program
   .description("Start the web visualization server")
   .option("-p, --port <port>", "Port number", "3000")
   .action(vizCommand);
+
+program
+  .command("communities [repoPath]")
+  .description("Detect code communities using Louvain algorithm")
+  .option("--no-clear", "Keep existing communities (default: clear first)")
+  .action(communitiesCommand);
 
 program.parse();

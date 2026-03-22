@@ -288,6 +288,47 @@ export const createMcpServer = (config: Config): McpServer => {
     }
   );
 
+  // get_communities — inspect community structure
+  server.tool(
+    "get_communities",
+    "List detected code communities at a given hierarchy level with their summaries",
+    {
+      level: z
+        .number()
+        .default(1)
+        .describe("Community hierarchy level (0=finest, higher=coarser)"),
+      limit: z.number().default(20).describe("Max communities to return"),
+    },
+    async ({ level, limit }) => {
+      try {
+        const results = await runQuery(config.neo4j, {
+          cypher: `MATCH (c:Community {level: $level})
+                   OPTIONAL MATCH (n)-[:BELONGS_TO_COMMUNITY]->(c)
+                   WHERE NOT n:Community
+                   RETURN c.id AS id, c.level AS level, c.memberCount AS memberCount,
+                          c.summary AS summary,
+                          collect(DISTINCT n.name)[..10] AS sampleMembers
+                   ORDER BY c.memberCount DESC
+                   LIMIT toInteger($limit)`,
+          params: { level, limit },
+        });
+        return {
+          content: [{ type: "text" as const, text: formatResults(results) }],
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Error: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
   return server;
 };
 
