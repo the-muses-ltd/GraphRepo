@@ -1,0 +1,269 @@
+import * as d3 from "d3-force";
+import { drag } from "d3-drag";
+import { select } from "d3-selection";
+import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
+import type { GraphData, GraphNode, GraphEdge } from "./api.js";
+
+const NODE_COLORS: Record<string, string> = {
+  File: "#4C8BF5",
+  Function: "#34A853",
+  Class: "#FBBC05",
+  Interface: "#AB47BC",
+  Variable: "#26A69A",
+  Module: "#78909C",
+};
+
+const NODE_RADIUS: Record<string, number> = {
+  File: 8,
+  Class: 7,
+  Interface: 6,
+  Function: 5,
+  Variable: 4,
+  Module: 6,
+};
+
+type SimNode = GraphNode & d3.SimulationNodeDatum;
+type SimLink = { source: SimNode | string; target: SimNode | string; type: string };
+
+export class GraphRenderer {
+  private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, unknown>;
+  private g: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
+  private simulation: d3.Simulation<SimNode, SimLink>;
+  private zoomBehavior: ZoomBehavior<SVGSVGElement, unknown>;
+  private nodes: SimNode[] = [];
+  private links: SimLink[] = [];
+  private nodeElements: d3.Selection<SVGGElement, SimNode, SVGGElement, unknown> | null = null;
+  private linkElements: d3.Selection<SVGLineElement, SimLink, SVGGElement, unknown> | null = null;
+  private selectedNodeId: string | null = null;
+  private visibleRelTypes: Set<string>;
+  private onNodeClick: ((node: GraphNode) => void) | null = null;
+  private tooltip: HTMLElement;
+
+  constructor(svgSelector: string, tooltipSelector: string) {
+    this.svg = select<SVGSVGElement, unknown>(svgSelector);
+    this.g = this.svg.append("g");
+    this.tooltip = document.querySelector(tooltipSelector)!;
+    this.visibleRelTypes = new Set(["CONTAINS", "IMPORTS", "CALLS", "HAS_METHOD", "EXTENDS", "IMPORTS_EXTERNAL"]);
+
+    this.simulation = d3
+      .forceSimulation<SimNode, SimLink>()
+      .force("link", d3.forceLink<SimNode, SimLink>().id((d) => d.id).distance(60))
+      .force("charge", d3.forceManyBody().strength(-120))
+      .force("center", d3.forceCenter())
+      .force("collision", d3.forceCollide().radius(15));
+
+    this.zoomBehavior = zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 8])
+      .on("zoom", (event) => {
+        this.g.attr("transform", event.transform);
+      });
+
+    this.svg.call(this.zoomBehavior);
+    this.updateCenter();
+
+    window.addEventListener("resize", () => this.updateCenter());
+  }
+
+  private updateCenter() {
+    const width = this.svg.node()!.clientWidth;
+    const height = this.svg.node()!.clientHeight;
+    (this.simulation.force("center") as d3.ForceCenter<SimNode>)
+      ?.x(width / 2)
+      .y(height / 2);
+  }
+
+  setOnNodeClick(callback: (node: GraphNode) => void) {
+    this.onNodeClick = callback;
+  }
+
+  setVisibleRelTypes(types: Set<string>) {
+    this.visibleRelTypes = types;
+    this.updateVisibility();
+  }
+
+  render(data: GraphData) {
+    // Deduplicate nodes by id
+    const nodeMap = new Map<string, SimNode>();
+    for (const n of data.nodes) {
+      if (n.id && !nodeMap.has(n.id)) {
+        nodeMap.set(n.id, { ...n, x: undefined, y: undefined } as SimNode);
+      }
+    }
+    this.nodes = [...nodeMap.values()];
+
+    // Filter valid edges
+    this.links = data.edges
+      .filter((e) => e.source && e.target && nodeMap.has(e.source) && nodeMap.has(e.target))
+      .map((e) => ({ ...e }));
+
+    // Clear previous render
+    this.g.selectAll("*").remove();
+
+    // Draw links
+    const linkGroup = this.g.append("g").attr("class", "links");
+    this.linkElements = linkGroup
+      .selectAll<SVGLineElement, SimLink>("line")
+      .data(this.links)
+      .join("line")
+      .attr("class", (d) => `link ${d.type}`)
+      .attr("stroke-width", 1);
+
+    // Draw nodes
+    const nodeGroup = this.g.append("g").attr("class", "nodes");
+    this.nodeElements = nodeGroup
+      .selectAll<SVGGElement, SimNode>("g")
+      .data(this.nodes)
+      .join("g")
+      .attr("class", "node")
+      .call(this.dragBehavior());
+
+    this.nodeElements
+      .append("circle")
+      .attr("r", (d) => NODE_RADIUS[d.labels?.[0] ?? ""] ?? 5)
+      .attr("fill", (d) => NODE_COLORS[d.labels?.[0] ?? ""] ?? "#666")
+      .on("mouseover", (_event, d) => this.showTooltip(d))
+      .on("mousemove", (event) => this.moveTooltip(event))
+      .on("mouseout", () => this.hideTooltip())
+      .on("click", (_event, d) => this.handleNodeClick(d));
+
+    this.nodeElements
+      .append("text")
+      .text((d) => d.name ?? "")
+      .attr("dy", (d) => -(NODE_RADIUS[d.labels?.[0] ?? ""] ?? 5) - 4);
+
+    // Setup simulation
+    this.simulation.nodes(this.nodes).on("tick", () => this.tick());
+    (this.simulation.force("link") as d3.ForceLink<SimNode, SimLink>).links(this.links);
+    this.simulation.alpha(1).restart();
+
+    this.updateVisibility();
+  }
+
+  private tick() {
+    this.linkElements
+      ?.attr("x1", (d) => (d.source as SimNode).x ?? 0)
+      .attr("y1", (d) => (d.source as SimNode).y ?? 0)
+      .attr("x2", (d) => (d.target as SimNode).x ?? 0)
+      .attr("y2", (d) => (d.target as SimNode).y ?? 0);
+
+    this.nodeElements?.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
+  }
+
+  private dragBehavior() {
+    const simulation = this.simulation;
+    return drag<SVGGElement, SimNode>()
+      .on("start", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      })
+      .on("drag", (event, d) => {
+        d.fx = event.x;
+        d.fy = event.y;
+      })
+      .on("end", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      });
+  }
+
+  private handleNodeClick(node: SimNode) {
+    if (this.selectedNodeId === node.id) {
+      this.selectedNodeId = null;
+      this.clearHighlight();
+    } else {
+      this.selectedNodeId = node.id;
+      this.highlightNode(node);
+    }
+    this.onNodeClick?.(node);
+  }
+
+  private highlightNode(node: SimNode) {
+    const connectedIds = new Set<string>([node.id]);
+    this.links.forEach((l) => {
+      const sourceId = typeof l.source === "string" ? l.source : l.source.id;
+      const targetId = typeof l.target === "string" ? l.target : l.target.id;
+      if (sourceId === node.id) connectedIds.add(targetId);
+      if (targetId === node.id) connectedIds.add(sourceId);
+    });
+
+    this.nodeElements
+      ?.classed("highlighted", (d) => connectedIds.has(d.id))
+      .classed("dimmed", (d) => !connectedIds.has(d.id));
+
+    this.linkElements
+      ?.classed("highlighted", (l) => {
+        const s = typeof l.source === "string" ? l.source : l.source.id;
+        const t = typeof l.target === "string" ? l.target : l.target.id;
+        return s === node.id || t === node.id;
+      })
+      .classed("dimmed", (l) => {
+        const s = typeof l.source === "string" ? l.source : l.source.id;
+        const t = typeof l.target === "string" ? l.target : l.target.id;
+        return s !== node.id && t !== node.id;
+      });
+  }
+
+  private clearHighlight() {
+    this.nodeElements?.classed("highlighted", false).classed("dimmed", false);
+    this.linkElements?.classed("highlighted", false).classed("dimmed", false);
+  }
+
+  private updateVisibility() {
+    this.linkElements?.style("display", (d) =>
+      this.visibleRelTypes.has(d.type) ? null : "none"
+    );
+  }
+
+  private showTooltip(node: SimNode) {
+    const type = node.labels?.[0] ?? "Unknown";
+    const color = NODE_COLORS[type] ?? "#666";
+
+    let detail = "";
+    if (node.path) detail += `<div class="tt-detail">Path: ${node.path}</div>`;
+    if (node.language) detail += `<div class="tt-detail">Language: ${node.language}</div>`;
+    if (node.lineCount) detail += `<div class="tt-detail">Lines: ${node.lineCount}</div>`;
+    if (node.startLine) detail += `<div class="tt-detail">Line: ${node.startLine}</div>`;
+    if (node.kind) detail += `<div class="tt-detail">Kind: ${node.kind}</div>`;
+
+    this.tooltip.innerHTML = `
+      <div class="tt-type" style="color: ${color}">${type}</div>
+      <div class="tt-name">${node.name ?? node.qualifiedName ?? "unknown"}</div>
+      ${detail}
+    `;
+    this.tooltip.style.display = "block";
+  }
+
+  private moveTooltip(event: MouseEvent) {
+    this.tooltip.style.left = event.clientX + 12 + "px";
+    this.tooltip.style.top = event.clientY + 12 + "px";
+  }
+
+  private hideTooltip() {
+    this.tooltip.style.display = "none";
+  }
+
+  centerOnNode(nodeId: string) {
+    const node = this.nodes.find((n) => n.id === nodeId);
+    if (!node || node.x == null || node.y == null) return;
+
+    const width = this.svg.node()!.clientWidth;
+    const height = this.svg.node()!.clientHeight;
+
+    this.svg
+      .transition()
+      .duration(750)
+      .call(
+        this.zoomBehavior.transform,
+        zoomIdentity
+          .translate(width / 2, height / 2)
+          .scale(2)
+          .translate(-node.x, -node.y)
+      );
+
+    this.selectedNodeId = nodeId;
+    this.highlightNode(node);
+    this.onNodeClick?.(node);
+  }
+}

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GraphRepo - Code Visualization</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <h1>GraphRepo</h1>
+
+      <div class="section">
+        <label>Search</label>
+        <input type="text" id="search-input" placeholder="Search functions, classes..." />
+        <div id="search-results"></div>
+      </div>
+
+      <div class="section">
+        <label>Node Types</label>
+        <div id="type-filters">
+          <label class="filter-item">
+            <input type="checkbox" data-type="File" checked />
+            <span class="dot" style="background: #4C8BF5"></span> Files
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" data-type="Function" checked />
+            <span class="dot" style="background: #34A853"></span> Functions
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" data-type="Class" checked />
+            <span class="dot" style="background: #FBBC05"></span> Classes
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" data-type="Interface" checked />
+            <span class="dot" style="background: #AB47BC"></span> Interfaces
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" data-type="Module" checked />
+            <span class="dot" style="background: #78909C"></span> Modules
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <label>Relationships</label>
+        <div id="rel-filters">
+          <label class="filter-item">
+            <input type="checkbox" data-rel="CONTAINS" checked />
+            CONTAINS
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" data-rel="IMPORTS" checked />
+            IMPORTS
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" data-rel="CALLS" checked />
+            CALLS
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" data-rel="HAS_METHOD" checked />
+            HAS_METHOD
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" data-rel="EXTENDS" checked />
+            EXTENDS
+          </label>
+          <label class="filter-item">
+            <input type="checkbox" data-rel="IMPORTS_EXTERNAL" checked />
+            IMPORTS_EXTERNAL
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <label>Max Nodes</label>
+        <input type="range" id="node-limit" min="50" max="2000" value="500" />
+        <span id="node-limit-display">500</span>
+      </div>
+
+      <button id="reload-btn">Reload Graph</button>
+
+      <div id="node-details" class="section" style="display: none">
+        <label>Node Details</label>
+        <div id="node-details-content"></div>
+      </div>
+    </aside>
+
+    <main id="graph-container">
+      <svg id="graph-svg"></svg>
+      <div id="tooltip" class="tooltip"></div>
+    </main>
+  </div>
+
+  <script type="module" src="bundle.js"></script>
+</body>
+</html>
