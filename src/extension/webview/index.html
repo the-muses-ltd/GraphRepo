@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}} 'nonce-{{nonce}}'; script-src 'nonce-{{nonce}}'; img-src {{cspSource}} data:;">
+  <link rel="stylesheet" href="{{stylesUri}}" nonce="{{nonce}}">
+</head>
+<body>
+  <div id="app">
+    <!-- Controls panel (collapsible) -->
+    <div id="controls">
+      <div class="control-section">
+        <input type="text" id="search-input" placeholder="Search functions, classes..." />
+        <div id="search-results"></div>
+      </div>
+
+      <details class="control-section" open>
+        <summary>Filters</summary>
+        <div class="filter-group">
+          <div class="filter-group-label">Nodes</div>
+          <div id="type-filters">
+            <label class="filter-item">
+              <input type="checkbox" data-type="File" checked />
+              <span class="dot" style="background: #4C8BF5"></span> Files
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-type="Function" checked />
+              <span class="dot" style="background: #34A853"></span> Functions
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-type="Class" checked />
+              <span class="dot" style="background: #FBBC05"></span> Classes
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-type="Interface" checked />
+              <span class="dot" style="background: #AB47BC"></span> Interfaces
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-type="Module" checked />
+              <span class="dot" style="background: #78909C"></span> Modules
+            </label>
+          </div>
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-label">Relationships</div>
+          <div id="rel-filters">
+            <label class="filter-item">
+              <input type="checkbox" data-rel="CONTAINS" checked />
+              CONTAINS
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-rel="IMPORTS" checked />
+              IMPORTS
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-rel="CALLS" checked />
+              CALLS
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-rel="HAS_METHOD" checked />
+              HAS_METHOD
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-rel="EXTENDS" checked />
+              EXTENDS
+            </label>
+            <label class="filter-item">
+              <input type="checkbox" data-rel="IMPORTS_EXTERNAL" checked />
+              EXTERNAL
+            </label>
+          </div>
+        </div>
+        <div class="filter-group">
+          <div class="filter-group-label">Max Nodes</div>
+          <div class="range-row">
+            <input type="range" id="node-limit" min="50" max="2000" value="500" />
+            <span id="node-limit-display">500</span>
+          </div>
+        </div>
+      </details>
+
+      <button id="reload-btn">Reload Graph</button>
+    </div>
+
+    <!-- Graph area -->
+    <div id="graph-container">
+      <svg id="graph-svg"></svg>
+      <div id="tooltip" class="tooltip"></div>
+    </div>
+
+    <!-- Node details panel (shown on click) -->
+    <div id="node-details" style="display: none">
+      <div class="details-header">
+        <span class="details-title">Details</span>
+        <button id="close-details" class="icon-btn">&times;</button>
+      </div>
+      <div id="node-details-content"></div>
+    </div>
+  </div>
+
+  <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+</body>
+</html>

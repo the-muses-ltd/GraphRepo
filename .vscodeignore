@@ -1,0 +1,10 @@
+.git
+src/**
+!dist/**
+node_modules/.cache
+*.map
+.env
+.mcp.json
+esbuild.*.mjs
+tsconfig.json
+CLAUDE.md

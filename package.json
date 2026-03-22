@@ -1,13 +1,111 @@
 {
   "name": "graphrepo",
+  "displayName": "GraphRepo",
   "version": "0.1.0",
   "description": "Neo4j + GraphRAG powered tool for visualizing and querying code repositories",
+  "publisher": "the-muses-ltd",
   "type": "module",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension/extension.cjs",
+  "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "graphrepo",
+          "title": "GraphRepo",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "graphrepo": [
+        {
+          "type": "webview",
+          "id": "graphrepo.graphView",
+          "name": "Code Graph"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "graphrepo.parseWorkspace",
+        "title": "GraphRepo: Parse Workspace",
+        "icon": "$(play)"
+      },
+      {
+        "command": "graphrepo.searchCodeGraph",
+        "title": "GraphRepo: Search Code Graph",
+        "icon": "$(search)"
+      },
+      {
+        "command": "graphrepo.refreshGraph",
+        "title": "GraphRepo: Refresh Graph",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "graphrepo.parseWorkspace",
+          "when": "view == graphrepo.graphView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "graphrepo.searchCodeGraph",
+          "when": "view == graphrepo.graphView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "graphrepo.refreshGraph",
+          "when": "view == graphrepo.graphView",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "GraphRepo",
+      "properties": {
+        "graphrepo.neo4j.uri": {
+          "type": "string",
+          "default": "bolt://localhost:7687",
+          "description": "Neo4j connection URI"
+        },
+        "graphrepo.neo4j.username": {
+          "type": "string",
+          "default": "neo4j",
+          "description": "Neo4j username"
+        },
+        "graphrepo.neo4j.password": {
+          "type": "string",
+          "default": "graphrepo-password",
+          "description": "Neo4j password"
+        },
+        "graphrepo.neo4j.database": {
+          "type": "string",
+          "default": "neo4j",
+          "description": "Neo4j database name"
+        }
+      }
+    }
+  },
   "scripts": {
     "parse": "tsx src/cli/index.ts parse",
     "serve": "tsx src/cli/index.ts serve",
     "viz": "tsx src/cli/index.ts viz",
     "build:web": "esbuild src/web/main.ts --bundle --outfile=dist/web/bundle.js --format=esm --platform=browser && cp src/web/index.html src/web/styles.css dist/web/",
+    "build:ext": "node esbuild.extension.mjs",
+    "build:webview": "node esbuild.webview.mjs",
+    "build:vscode": "npm run build:ext && npm run build:webview",
+    "watch:ext": "node esbuild.extension.mjs --watch",
+    "watch:webview": "node esbuild.webview.mjs --watch",
+    "vscode:prepublish": "npm run build:vscode",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -31,6 +129,7 @@
     "@types/d3-selection": "^3.0.0",
     "@types/d3-zoom": "^3.0.0",
     "@types/node": "^22.0.0",
+    "@types/vscode": "^1.110.0",
     "esbuild": "^0.24.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
