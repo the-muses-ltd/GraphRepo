@@ -4,7 +4,11 @@ src/**
 node_modules/.cache
 *.map
 .env
+.env.example
 .mcp.json
 esbuild.*.mjs
 tsconfig.json
 CLAUDE.md
+docker-compose.yml
+src/web/**
+src/cli/**

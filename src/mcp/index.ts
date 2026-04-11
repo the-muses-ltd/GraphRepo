@@ -4,11 +4,11 @@ import { z } from "zod";
 import { writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import type { Config } from "../config.js";
-import { withSession } from "../graph/connection.js";
+import { getStore } from "../graph/store.js";
 import * as queries from "../graph/queries.js";
-
-const WRITE_KEYWORDS = /\b(CREATE|DELETE|MERGE|SET|REMOVE|DROP|DETACH)\b/i;
+import type { Config } from "../config.js";
+import type { EmbeddingService } from "../graphrag/embeddings.js";
+import type { VectorStore } from "../graphrag/vector-store.js";
 
 const MCP_EVENT_FILE = join(tmpdir(), "graphrepo-mcp-events.json");
 
@@ -26,28 +26,21 @@ const emitEvent = (tool: string, target: string, targetType: "file" | "function"
   }
 };
 
-const runQuery = async (
-  config: Config["neo4j"],
-  query: { cypher: string; params: Record<string, unknown> }
-) => {
-  return withSession(config, async (session) => {
-    const result = await session.run(query.cypher, query.params);
-    return result.records.map((r) => r.toObject());
-  });
-};
-
-const formatResults = (records: Record<string, unknown>[]): string => {
-  if (records.length === 0) return "No results found.";
+const formatResults = (records: unknown): string => {
+  if (Array.isArray(records) && records.length === 0) return "No results found.";
   return JSON.stringify(records, null, 2);
 };
 
-export const createMcpServer = (config: Config): McpServer => {
+export const createMcpServer = (
+  config: Config,
+  options?: { embeddingService?: EmbeddingService; vectorStore?: VectorStore },
+): McpServer => {
   const server = new McpServer({
     name: "graphrepo",
-    version: "0.1.0",
+    version: "0.2.0",
   });
 
-  // Derive default repo name from config path
+  const graph = getStore();
   const defaultRepo = config.repoPath.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? null;
 
   // search_code
@@ -65,21 +58,13 @@ export const createMcpServer = (config: Config): McpServer => {
     async ({ query, type, limit }) => {
       emitEvent("search_code", query, "entity");
       try {
-        const results = await runQuery(
-          config.neo4j,
-          queries.searchByName(query, type, limit, defaultRepo)
-        );
+        const results = queries.searchByName(graph, query, type, limit, defaultRepo);
         return {
           content: [{ type: "text" as const, text: formatResults(results) }],
         };
       } catch (err) {
         return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error searching: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
+          content: [{ type: "text" as const, text: `Error searching: ${err instanceof Error ? err.message : String(err)}` }],
           isError: true,
         };
       }
@@ -97,23 +82,10 @@ export const createMcpServer = (config: Config): McpServer => {
     async ({ filePath, depth }) => {
       emitEvent("get_dependencies", filePath, "file");
       try {
-        const results = await runQuery(
-          config.neo4j,
-          queries.getDependencies(filePath, depth, defaultRepo)
-        );
-        return {
-          content: [{ type: "text" as const, text: formatResults(results) }],
-        };
+        const results = queries.getDependencies(graph, filePath, depth, defaultRepo);
+        return { content: [{ type: "text" as const, text: formatResults(results) }] };
       } catch (err) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        };
+        return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
       }
     }
   );
@@ -129,23 +101,10 @@ export const createMcpServer = (config: Config): McpServer => {
     async ({ filePath, depth }) => {
       emitEvent("get_dependents", filePath, "file");
       try {
-        const results = await runQuery(
-          config.neo4j,
-          queries.getDependents(filePath, depth, defaultRepo)
-        );
-        return {
-          content: [{ type: "text" as const, text: formatResults(results) }],
-        };
+        const results = queries.getDependents(graph, filePath, depth, defaultRepo);
+        return { content: [{ type: "text" as const, text: formatResults(results) }] };
       } catch (err) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        };
+        return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
       }
     }
   );
@@ -160,23 +119,11 @@ export const createMcpServer = (config: Config): McpServer => {
     async ({ filePath }) => {
       emitEvent("get_file_structure", filePath, "file");
       try {
-        const results = await runQuery(
-          config.neo4j,
-          queries.getFileStructure(filePath, defaultRepo)
-        );
-        return {
-          content: [{ type: "text" as const, text: formatResults(results) }],
-        };
+        const result = queries.getFileStructure(graph, filePath, defaultRepo);
+        if (!result) return { content: [{ type: "text" as const, text: "File not found in graph." }] };
+        return { content: [{ type: "text" as const, text: formatResults([result]) }] };
       } catch (err) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        };
+        return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
       }
     }
   );
@@ -196,23 +143,10 @@ export const createMcpServer = (config: Config): McpServer => {
     async ({ functionName, depth, direction }) => {
       emitEvent("get_call_graph", functionName, "function");
       try {
-        const results = await runQuery(
-          config.neo4j,
-          queries.getCallGraph(functionName, depth, direction, defaultRepo)
-        );
-        return {
-          content: [{ type: "text" as const, text: formatResults(results) }],
-        };
+        const results = queries.getCallGraph(graph, functionName, depth, direction, defaultRepo);
+        return { content: [{ type: "text" as const, text: formatResults(results) }] };
       } catch (err) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        };
+        return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
       }
     }
   );
@@ -228,66 +162,38 @@ export const createMcpServer = (config: Config): McpServer => {
     async ({ entityName, maxHops }) => {
       emitEvent("find_related", entityName, "entity");
       try {
-        const results = await runQuery(
-          config.neo4j,
-          queries.findRelated(entityName, maxHops, defaultRepo)
-        );
-        return {
-          content: [{ type: "text" as const, text: formatResults(results) }],
-        };
+        const results = queries.findRelated(graph, entityName, maxHops, defaultRepo);
+        return { content: [{ type: "text" as const, text: formatResults(results) }] };
       } catch (err) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        };
+        return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
       }
     }
   );
 
-  // query_graph
+  // run_traversal (replaces query_graph — structured traversal instead of raw Cypher)
   server.tool(
-    "query_graph",
-    "Run a custom read-only Cypher query against the code graph. Write operations are blocked.",
+    "run_traversal",
+    "Traverse the code graph from a starting entity. Use this for custom graph exploration.",
     {
-      cypher: z.string().describe("Cypher query (read-only)"),
+      startNode: z.string().describe("Name, qualified name, or file path of the start node"),
+      edgeTypes: z
+        .array(z.string())
+        .nullable()
+        .default(null)
+        .describe("Filter by edge types (IMPORTS, CALLS, CONTAINS, HAS_METHOD, EXTENDS, etc). Null = all."),
+      direction: z
+        .enum(["in", "out", "both"])
+        .default("both")
+        .describe("Traversal direction"),
+      maxDepth: z.number().default(2).describe("Maximum traversal depth"),
     },
-    async ({ cypher }) => {
-      emitEvent("query_graph", cypher.substring(0, 100), "query");
-      if (WRITE_KEYWORDS.test(cypher)) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: "Error: Only read-only queries are allowed. Write operations (CREATE, DELETE, MERGE, SET, REMOVE, DROP, DETACH) are blocked.",
-            },
-          ],
-          isError: true,
-        };
-      }
-
+    async ({ startNode, edgeTypes, direction, maxDepth }) => {
+      emitEvent("run_traversal", startNode, "entity");
       try {
-        const results = await runQuery(config.neo4j, {
-          cypher,
-          params: {},
-        });
-        return {
-          content: [{ type: "text" as const, text: formatResults(results) }],
-        };
+        const results = queries.runTraversal(graph, startNode, edgeTypes, direction, maxDepth);
+        return { content: [{ type: "text" as const, text: formatResults(results) }] };
       } catch (err) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Query error: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        };
+        return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
       }
     }
   );
@@ -300,70 +206,84 @@ export const createMcpServer = (config: Config): McpServer => {
     async () => {
       emitEvent("get_summary", "repo", "query");
       try {
-        const results = await runQuery(config.neo4j, queries.getRepoSummary(defaultRepo));
-        return {
-          content: [{ type: "text" as const, text: formatResults(results) }],
-        };
+        const result = queries.getRepoSummary(graph, defaultRepo);
+        return { content: [{ type: "text" as const, text: formatResults([result]) }] };
       } catch (err) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        };
+        return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
       }
     }
   );
 
-  // get_communities — inspect community structure
+  // get_communities
   server.tool(
     "get_communities",
     "List detected code communities at a given hierarchy level with their summaries",
     {
-      level: z
-        .number()
-        .default(1)
-        .describe("Community hierarchy level (0=finest, higher=coarser)"),
+      level: z.number().default(1).describe("Community hierarchy level (0=finest, higher=coarser)"),
       limit: z.number().default(20).describe("Max communities to return"),
     },
     async ({ level, limit }) => {
       try {
-        const results = await runQuery(config.neo4j, {
-          cypher: `MATCH (c:Community {level: $level})
-                   OPTIONAL MATCH (n)-[:BELONGS_TO_COMMUNITY]->(c)
-                   WHERE NOT n:Community
-                   RETURN c.id AS id, c.level AS level, c.memberCount AS memberCount,
-                          c.summary AS summary,
-                          collect(DISTINCT n.name)[..10] AS sampleMembers
-                   ORDER BY c.memberCount DESC
-                   LIMIT toInteger($limit)`,
-          params: { level, limit },
-        });
-        return {
-          content: [{ type: "text" as const, text: formatResults(results) }],
-        };
+        const results = queries.getCommunities(graph, level, limit);
+        return { content: [{ type: "text" as const, text: formatResults(results) }] };
       } catch (err) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Error: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        };
+        return { content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }], isError: true };
       }
     }
   );
 
+  // semantic_search (only registered if embedding service is available)
+  if (options?.embeddingService && options?.vectorStore) {
+    const embSvc = options.embeddingService;
+    const vecStore = options.vectorStore;
+
+    server.tool(
+      "semantic_search",
+      "Search code by meaning — find entities related to a concept even without exact name matches",
+      {
+        query: z.string().describe("Natural language query describing what you're looking for"),
+        limit: z.number().default(10).describe("Maximum results to return"),
+      },
+      async ({ query, limit }) => {
+        emitEvent("semantic_search", query, "query");
+        try {
+          if (!embSvc.isReady()) {
+            return {
+              content: [{ type: "text" as const, text: "Embedding model not yet loaded. Try again shortly." }],
+              isError: true,
+            };
+          }
+          const queryEmbedding = await embSvc.embedText(query);
+          const results = vecStore.search(queryEmbedding, limit);
+
+          // Enrich results with node attributes from graph
+          const enriched = results.map((r) => {
+            try {
+              const attrs = graph.getNodeAttributes(r.id);
+              return {
+                id: r.id,
+                name: attrs.name,
+                type: attrs.type,
+                filePath: attrs.filePath,
+                score: Math.round(r.score * 1000) / 1000,
+                description: r.text,
+              };
+            } catch {
+              return { id: r.id, score: Math.round(r.score * 1000) / 1000, description: r.text };
+            }
+          });
+
+          return { content: [{ type: "text" as const, text: formatResults(enriched) }] };
+        } catch (err) {
+          return {
+            content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
+            isError: true,
+          };
+        }
+      }
+    );
+  }
+
   return server;
 };
 
-export const startMcpServer = async (config: Config): Promise<void> => {
-  const server = createMcpServer(config);
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-};

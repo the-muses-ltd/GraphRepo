@@ -1,4 +1,6 @@
 import * as esbuild from "esbuild";
+import { cpSync, mkdirSync, existsSync } from "fs";
+import { join, dirname } from "path";
 
 const watch = process.argv.includes("--watch");
 
@@ -12,6 +14,9 @@ const ctx = await esbuild.context({
   sourcemap: true,
   external: [
     "vscode",
+    // Transformers.js loads ONNX runtime dynamically — keep external
+    "@huggingface/transformers",
+    "onnxruntime-node",
   ],
   // Shim import.meta.url for CJS output (needed by tree-sitter-init.ts)
   define: {
@@ -22,10 +27,34 @@ const ctx = await esbuild.context({
   },
 });
 
+/** Copy tree-sitter WASM files into dist/wasm/ */
+function copyWasmFiles() {
+  const wasmDir = "dist/wasm";
+  mkdirSync(wasmDir, { recursive: true });
+
+  const wasmSources = [
+    ["node_modules/web-tree-sitter/tree-sitter.wasm", "tree-sitter.wasm"],
+    ["node_modules/tree-sitter-wasms/out/tree-sitter-typescript.wasm", "tree-sitter-typescript.wasm"],
+    ["node_modules/tree-sitter-wasms/out/tree-sitter-javascript.wasm", "tree-sitter-javascript.wasm"],
+    ["node_modules/tree-sitter-wasms/out/tree-sitter-python.wasm", "tree-sitter-python.wasm"],
+  ];
+
+  for (const [src, dest] of wasmSources) {
+    if (existsSync(src)) {
+      cpSync(src, join(wasmDir, dest));
+      console.log(`  Copied ${dest}`);
+    } else {
+      console.warn(`  Warning: ${src} not found, skipping`);
+    }
+  }
+}
+
 if (watch) {
   await ctx.watch();
   console.log("Watching extension...");
 } else {
   await ctx.rebuild();
   await ctx.dispose();
+  console.log("Copying WASM files...");
+  copyWasmFiles();
 }
