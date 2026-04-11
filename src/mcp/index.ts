@@ -264,7 +264,7 @@ export const createMcpServer = (
                 id: r.id,
                 name: attrs.name,
                 type: attrs.type,
-                filePath: attrs.filePath,
+                filePath: attrs.path,
                 score: Math.round(r.score * 1000) / 1000,
                 description: r.text,
               };

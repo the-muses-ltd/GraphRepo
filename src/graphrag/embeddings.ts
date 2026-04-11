@@ -90,7 +90,7 @@ export function buildNodeDescription(
     case "Function": {
       const params = attrs.parameters ?? "";
       const ret = attrs.returnType ?? "void";
-      return `function ${attrs.name} (${params}): ${ret} in ${attrs.filePath ?? ""}`;
+      return `function ${attrs.name} (${params}): ${ret} in ${attrs.path ?? ""}`;
     }
     case "Class": {
       const methods: string[] = [];
@@ -99,11 +99,10 @@ export function buildNodeDescription(
           methods.push(graph.getNodeAttributes(target).name);
         }
       });
-      const ext = attrs.superClass ? ` extends ${attrs.superClass}` : "";
-      return `class ${attrs.name}${ext} methods: ${methods.join(", ")} in ${attrs.filePath ?? ""}`;
+      return `class ${attrs.name} methods: ${methods.join(", ")} in ${attrs.path ?? ""}`;
     }
     case "Interface": {
-      return `interface ${attrs.name} in ${attrs.filePath ?? ""}`;
+      return `interface ${attrs.name} in ${attrs.path ?? ""}`;
     }
     case "File": {
       const children: { functions: string[]; classes: string[]; imports: string[] } = {
@@ -133,7 +132,7 @@ export function buildNodeDescription(
       return `code community: ${members.slice(0, 20).join(", ")} (${attrs.memberCount ?? members.length} members)`;
     }
     default:
-      return `${type} ${attrs.name} in ${attrs.filePath ?? ""}`;
+      return `${type} ${attrs.name} in ${attrs.path ?? ""}`;
   }
 }
 

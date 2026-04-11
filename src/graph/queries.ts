@@ -268,10 +268,11 @@ export function getCallGraph(
   });
   if (!startId) return [];
 
+  const start: string = startId;
   const edges: Array<{ caller: string; callee: string }> = [];
   const edgeSet = new Set<string>();
-  const visited = new Set<string>([startId]);
-  let frontier = [startId];
+  const visited = new Set<string>([start]);
+  let frontier: string[] = [start];
 
   for (let d = 0; d < depth; d++) {
     const nextFrontier: string[] = [];
@@ -346,8 +347,9 @@ export function findRelated(
     qualifiedName: string;
     distance: number;
   }> = [];
-  const visited = new Set<string>([startId]);
-  let frontier = [startId];
+  const start: string = startId;
+  const visited = new Set<string>([start]);
+  let frontier: string[] = [start];
 
   for (let d = 1; d <= maxHops; d++) {
     const nextFrontier: string[] = [];
@@ -575,10 +577,11 @@ export function runTraversal(
   });
   if (!startId) return [];
 
+  const start: string = startId;
   const edgeTypeSet = edgeTypes ? new Set(edgeTypes) : null;
   const results: Array<Record<string, unknown>> = [];
-  const visited = new Set<string>([startId]);
-  let frontier = [startId];
+  const visited = new Set<string>([start]);
+  let frontier: string[] = [start];
 
   for (let d = 1; d <= maxDepth; d++) {
     const nextFrontier: string[] = [];
