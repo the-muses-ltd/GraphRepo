@@ -14,6 +14,28 @@ let graphViewProvider: GraphViewProvider | undefined;
 let embeddingService: EmbeddingService | undefined;
 let vectorStore: VectorStore | undefined;
 
+function writeMcpConfig(extensionPath: string, workspaceRoot: string) {
+  const mcpPath = path.join(workspaceRoot, ".mcp.json");
+  const mcpServerPath = path.join(extensionPath, "dist", "mcp-server.cjs");
+  const graphDataFile = getGraphStorePath(workspaceRoot);
+
+  let config: Record<string, unknown> = {};
+  if (fs.existsSync(mcpPath)) {
+    try { config = JSON.parse(fs.readFileSync(mcpPath, "utf-8")); } catch {}
+  }
+  const mcpServers = (config.mcpServers as Record<string, unknown>) ?? {};
+  mcpServers.graphrepo = {
+    command: "node",
+    args: [mcpServerPath, "serve"],
+    env: {
+      GRAPHREPO_DATA_FILE: graphDataFile,
+      GRAPHREPO_REPO_PATH: workspaceRoot,
+    },
+  };
+  config.mcpServers = mcpServers;
+  fs.writeFileSync(mcpPath, JSON.stringify(config, null, 2), "utf-8");
+}
+
 function getWorkspaceRoot(): string | null {
   const ws = vscode.workspace.workspaceFolders?.[0];
   return ws?.uri.fsPath ?? null;
@@ -124,6 +146,9 @@ export async function activate(context: vscode.ExtensionContext) {
             progress.report({ message: "Saving graph..." });
             const graphPath = getGraphStorePath(repoPath);
             await saveGraph(getStore(), graphPath);
+
+            // Auto-configure MCP for Claude Code
+            writeMcpConfig(context.extensionPath, repoPath);
 
             // Generate embeddings (non-blocking — if model isn't cached yet, download it)
             if (embeddingService && vectorStore) {
@@ -245,50 +270,10 @@ export async function activate(context: vscode.ExtensionContext) {
         return;
       }
 
-      const mcpServerPath = path.join(context.extensionPath, "dist", "mcp-server.cjs");
-      const graphDataFile = getGraphStorePath(root);
-
-      const mcpConfig = {
-        command: "node",
-        args: [mcpServerPath, "serve"],
-        env: {
-          GRAPHREPO_DATA_FILE: graphDataFile,
-          GRAPHREPO_REPO_PATH: root,
-        },
-      };
-
-      const claudeConfigDir = path.join(os.homedir(), ".claude");
-      const claudeConfigFile = path.join(claudeConfigDir, "claude_desktop_config.json");
-
-      try {
-        if (!fs.existsSync(claudeConfigDir)) {
-          fs.mkdirSync(claudeConfigDir, { recursive: true });
-        }
-
-        let config: Record<string, unknown> = {};
-        if (fs.existsSync(claudeConfigFile)) {
-          config = JSON.parse(fs.readFileSync(claudeConfigFile, "utf-8"));
-        }
-
-        const mcpServers = (config.mcpServers as Record<string, unknown>) ?? {};
-        mcpServers.graphrepo = mcpConfig;
-        config.mcpServers = mcpServers;
-
-        fs.writeFileSync(claudeConfigFile, JSON.stringify(config, null, 2), "utf-8");
-        vscode.window.showInformationMessage(
-          "GraphRepo: MCP configured for Claude Desktop. Restart Claude to apply."
-        );
-      } catch {
-        const configJson = JSON.stringify({ mcpServers: { graphrepo: mcpConfig } }, null, 2);
-        const doc = await vscode.workspace.openTextDocument({
-          content: configJson,
-          language: "json",
-        });
-        await vscode.window.showTextDocument(doc);
-        vscode.window.showInformationMessage(
-          "GraphRepo: Add this MCP config to your Claude Desktop settings."
-        );
-      }
+      writeMcpConfig(context.extensionPath, root);
+      vscode.window.showInformationMessage(
+        "GraphRepo: MCP configured in .mcp.json — restart Claude Code to connect."
+      );
     })
   );
 
