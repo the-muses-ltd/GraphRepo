@@ -25,9 +25,10 @@ export const serveCommand = async (): Promise<void> => {
   const vectorStore = new VectorStore();
   vectorStore.load(embeddingsFile);
 
-  // Initialize embedding service (model loads lazily on first query)
+  // Initialize embedding service (load model before serving)
   const modelCacheDir = process.env.GRAPHREPO_MODEL_CACHE ?? path.join(repoPath, ".graphrepo", "model-cache");
   const embeddingService = new EmbeddingService(modelCacheDir);
+  await embeddingService.initialize();
 
   const server = createMcpServer(config, { embeddingService, vectorStore });
   const transport = new StdioServerTransport();
