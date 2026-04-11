@@ -10,5 +10,7 @@ esbuild.*.mjs
 tsconfig.json
 CLAUDE.md
 docker-compose.yml
+.graphrepo/
+.vscode/
 src/web/**
 src/cli/**
