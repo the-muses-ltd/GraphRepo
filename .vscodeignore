@@ -1,7 +1,7 @@
 .git
 src/**
 !dist/**
-node_modules/.cache
+node_modules/**
 *.map
 .env
 .env.example

@@ -112,9 +112,6 @@
     "web-tree-sitter": "^0.25.0",
     "zod": "^3.24.0"
   },
-  "bundledDependencies": [
-    "@huggingface/transformers"
-  ],
   "devDependencies": {
     "@types/d3-drag": "^3.0.7",
     "@types/d3-force": "^3.0.0",
