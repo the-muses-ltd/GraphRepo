@@ -24,7 +24,7 @@ function resolveWasmDir(): string {
   const thisDir = path.dirname(thisFile);
 
   // Check if bundled WASM files exist (dist/wasm/)
-  const bundledDir = path.resolve(thisDir, "..", "..", "wasm");
+  const bundledDir = path.resolve(thisDir, "..", "wasm");
   if (fs.existsSync(path.join(bundledDir, "tree-sitter-typescript.wasm"))) {
     return bundledDir;
   }
@@ -37,7 +37,7 @@ function resolveCoreWasm(): string {
   const thisFile = fileURLToPath(import.meta.url);
   const thisDir = path.dirname(thisFile);
 
-  const bundledPath = path.resolve(thisDir, "..", "..", "wasm", "tree-sitter.wasm");
+  const bundledPath = path.resolve(thisDir, "..", "wasm", "tree-sitter.wasm");
   if (fs.existsSync(bundledPath)) {
     return bundledPath;
   }
