@@ -1,6 +1,6 @@
 import * as d3 from "d3-force";
 import { drag } from "d3-drag";
-import { select } from "d3-selection";
+import { select, type Selection } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior } from "d3-zoom";
 import type { GraphData, GraphNode, GraphEdge } from "./api.js";
 
@@ -36,14 +36,14 @@ type SimNode = GraphNode & d3.SimulationNodeDatum;
 type SimLink = { source: SimNode | string; target: SimNode | string; type: string };
 
 export class GraphRenderer {
-  private svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, unknown>;
-  private g: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
+  private svg: Selection<SVGSVGElement, unknown, HTMLElement, unknown>;
+  private g: Selection<SVGGElement, unknown, HTMLElement, unknown>;
   private simulation: d3.Simulation<SimNode, SimLink>;
   private zoomBehavior: ZoomBehavior<SVGSVGElement, unknown>;
   private nodes: SimNode[] = [];
   private links: SimLink[] = [];
-  private nodeElements: d3.Selection<SVGGElement, SimNode, SVGGElement, unknown> | null = null;
-  private linkElements: d3.Selection<SVGLineElement, SimLink, SVGGElement, unknown> | null = null;
+  private nodeElements: Selection<SVGGElement, SimNode, SVGGElement, unknown> | null = null;
+  private linkElements: Selection<SVGLineElement, SimLink, SVGGElement, unknown> | null = null;
   private selectedNodeId: string | null = null;
   private visibleRelTypes: Set<string>;
   private onNodeClick: ((node: GraphNode) => void) | null = null;
@@ -110,7 +110,7 @@ export class GraphRenderer {
     // Re-color existing nodes
     this.nodeElements
       ?.select("circle")
-      .attr("fill", (d) => this.getNodeColor(d));
+      .attr("fill", (d: SimNode) => this.getNodeColor(d));
   }
 
   private getNodeColor(node: SimNode): string {
@@ -148,7 +148,7 @@ export class GraphRenderer {
       .selectAll<SVGLineElement, SimLink>("line")
       .data(this.links)
       .join("line")
-      .attr("class", (d) => `link ${d.type}`)
+      .attr("class", (d: SimLink) => `link ${d.type}`)
       .attr("stroke-width", 1);
 
     // Draw nodes
@@ -171,17 +171,17 @@ export class GraphRenderer {
 
     this.nodeElements
       .append("circle")
-      .attr("r", (d) => NODE_RADIUS[d.labels?.[0] ?? ""] ?? 5)
-      .attr("fill", (d) => this.getNodeColor(d))
-      .on("mouseover", (_event, d) => this.showTooltip(d))
-      .on("mousemove", (event) => this.moveTooltip(event))
+      .attr("r", (d: SimNode) => NODE_RADIUS[d.labels?.[0] ?? ""] ?? 5)
+      .attr("fill", (d: SimNode) => this.getNodeColor(d))
+      .on("mouseover", (_event: MouseEvent, d: SimNode) => this.showTooltip(d))
+      .on("mousemove", (event: MouseEvent) => this.moveTooltip(event))
       .on("mouseout", () => this.hideTooltip())
-      .on("click", (_event, d) => this.handleNodeClick(d));
+      .on("click", (_event: MouseEvent, d: SimNode) => this.handleNodeClick(d));
 
     this.nodeElements
       .append("text")
-      .text((d) => d.name ?? "")
-      .attr("dy", (d) => -(NODE_RADIUS[d.labels?.[0] ?? ""] ?? 5) - 4);
+      .text((d: SimNode) => d.name ?? "")
+      .attr("dy", (d: SimNode) => -(NODE_RADIUS[d.labels?.[0] ?? ""] ?? 5) - 4);
 
     // Scale radial force to node count for sphere-like distribution
     const width = this.svg.node()!.clientWidth;
@@ -205,12 +205,12 @@ export class GraphRenderer {
 
   private tick() {
     this.linkElements
-      ?.attr("x1", (d) => (d.source as SimNode).x ?? 0)
-      .attr("y1", (d) => (d.source as SimNode).y ?? 0)
-      .attr("x2", (d) => (d.target as SimNode).x ?? 0)
-      .attr("y2", (d) => (d.target as SimNode).y ?? 0);
+      ?.attr("x1", (d: SimLink) => (d.source as SimNode).x ?? 0)
+      .attr("y1", (d: SimLink) => (d.source as SimNode).y ?? 0)
+      .attr("x2", (d: SimLink) => (d.target as SimNode).x ?? 0)
+      .attr("y2", (d: SimLink) => (d.target as SimNode).y ?? 0);
 
-    this.nodeElements?.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
+    this.nodeElements?.attr("transform", (d: SimNode) => `translate(${d.x ?? 0},${d.y ?? 0})`);
   }
 
   private dragBehavior() {
@@ -253,16 +253,16 @@ export class GraphRenderer {
     });
 
     this.nodeElements
-      ?.classed("highlighted", (d) => connectedIds.has(d.id))
-      .classed("dimmed", (d) => !connectedIds.has(d.id));
+      ?.classed("highlighted", (d: SimNode) => connectedIds.has(d.id))
+      .classed("dimmed", (d: SimNode) => !connectedIds.has(d.id));
 
     this.linkElements
-      ?.classed("highlighted", (l) => {
+      ?.classed("highlighted", (l: SimLink) => {
         const s = typeof l.source === "string" ? l.source : l.source.id;
         const t = typeof l.target === "string" ? l.target : l.target.id;
         return s === node.id || t === node.id;
       })
-      .classed("dimmed", (l) => {
+      .classed("dimmed", (l: SimLink) => {
         const s = typeof l.source === "string" ? l.source : l.source.id;
         const t = typeof l.target === "string" ? l.target : l.target.id;
         return s !== node.id && t !== node.id;
@@ -275,7 +275,7 @@ export class GraphRenderer {
   }
 
   private updateVisibility() {
-    this.linkElements?.style("display", (d) =>
+    this.linkElements?.style("display", (d: SimLink) =>
       this.visibleRelTypes.has(d.type) ? null : "none"
     );
   }
@@ -383,7 +383,7 @@ export class GraphRenderer {
     const width = this.svg.node()!.clientWidth;
     const height = this.svg.node()!.clientHeight;
 
-    this.svg
+    (this.svg as any)
       .transition()
       .duration(750)
       .call(
