@@ -14,10 +14,14 @@ const ctx = await esbuild.context({
   sourcemap: true,
   external: [
     "vscode",
-    // Transformers.js loads ONNX runtime dynamically — keep external
-    "@huggingface/transformers",
-    "onnxruntime-node",
+    // sharp is a native image processing dep of Transformers.js — unused for text embeddings
+    "sharp",
   ],
+  alias: {
+    // Redirect onnxruntime-node to empty shim — Transformers.js imports it at module level
+    // but we force the WASM backend via Symbol.for('onnxruntime') in embeddings.ts
+    "onnxruntime-node": "./src/graphrag/onnxruntime-node-shim.ts",
+  },
   // Shim import.meta.url for CJS output (needed by tree-sitter-init.ts)
   define: {
     "import.meta.url": "importMetaUrl",

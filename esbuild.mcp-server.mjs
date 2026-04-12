@@ -9,10 +9,12 @@ await esbuild.build({
   target: "node18",
   sourcemap: true,
   external: [
-    // Transformers.js loads ONNX runtime dynamically — keep external
-    "@huggingface/transformers",
-    "onnxruntime-node",
+    // sharp is a native image processing dep of Transformers.js — unused for text embeddings
+    "sharp",
   ],
+  alias: {
+    "onnxruntime-node": "./src/graphrag/onnxruntime-node-shim.ts",
+  },
   // Shim import.meta.url for CJS output (needed by tree-sitter-init.ts)
   define: {
     "import.meta.url": "importMetaUrl",

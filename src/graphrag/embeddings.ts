@@ -20,16 +20,29 @@ export class EmbeddingService {
   async initialize(): Promise<boolean> {
     if (this.ready) return true;
     try {
-      // Dynamic import — Transformers.js is kept external by esbuild
+      // Force onnxruntime-web WASM backend instead of onnxruntime-node.
+      // Transformers.js checks globalThis[Symbol.for('onnxruntime')] first,
+      // before falling back to onnxruntime-node (Node.js) or onnxruntime-web (browser).
+      // @ts-ignore — onnxruntime-web types don't resolve via package.json "exports"
+      const ort = await import("onnxruntime-web");
+      const ORT_SYMBOL = Symbol.for("onnxruntime");
+      if (!(ORT_SYMBOL in globalThis)) {
+        (globalThis as Record<symbol, unknown>)[ORT_SYMBOL] = ort;
+      }
+      // Disable multi-threading to avoid SharedArrayBuffer issues in VS Code host
+      if (ort.env?.wasm) {
+        ort.env.wasm.numThreads = 1;
+      }
+
+      // Now import Transformers.js — it will see our onnxruntime-web override
       const { pipeline: createPipeline, env } = await import("@huggingface/transformers");
       env.cacheDir = this.modelCacheDir;
-      // Disable remote model fetching after first download
       env.allowRemoteModels = true;
 
       pipeline = (await createPipeline(
         "feature-extraction",
         "Xenova/all-MiniLM-L6-v2",
-        { dtype: "fp32" }
+        { dtype: "fp32", device: "wasm" }
       )) as unknown as Pipeline;
 
       this.ready = true;
