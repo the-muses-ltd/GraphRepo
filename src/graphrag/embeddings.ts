@@ -41,49 +41,53 @@ let pipeline: Pipeline | null = null;
 export class EmbeddingService {
   private modelCacheDir: string;
   private ready = false;
+  private log: (msg: string) => void;
 
-  /** @param modelCacheDir Directory to cache the ONNX model (e.g., extensionContext.globalStorageUri) */
-  constructor(modelCacheDir: string) {
+  constructor(modelCacheDir: string, log?: (msg: string) => void) {
     this.modelCacheDir = modelCacheDir;
+    this.log = log ?? ((msg) => console.log(msg));
   }
 
-  /** Lazy-load the model on first use. Returns false if loading fails. */
-  async initialize(): Promise<boolean> {
-    if (this.ready) return true;
+  /** Lazy-load the model on first use. Returns { ok, error? }. */
+  async initialize(): Promise<{ ok: boolean; error?: string }> {
+    if (this.ready) return { ok: true };
     try {
-      console.log("[EmbeddingService] Step 1: importing onnxruntime-web...");
+      this.log("[EmbeddingService] Step 1/5: importing onnxruntime-web...");
       // @ts-ignore — onnxruntime-web types don't resolve via package.json "exports"
       const ort = await import("onnxruntime-web");
 
-      console.log("[EmbeddingService] Step 2: configuring WASM paths...");
-      // No Symbol.for('onnxruntime') override needed — the onnxruntime-node shim
-      // re-exports onnxruntime-web, so Transformers.js's IS_NODE_ENV branch uses
-      // the WASM backend directly and correctly populates supportedDevices.
+      this.log("[EmbeddingService] Step 2/5: configuring WASM paths...");
       if (ort.env?.wasm) {
         ort.env.wasm.numThreads = 1;
         const wasmDir = resolveOnnxWasmDir();
-        console.log("[EmbeddingService] wasmPaths =", wasmDir);
+        this.log(`[EmbeddingService] wasmPaths = ${wasmDir}`);
         ort.env.wasm.wasmPaths = wasmDir;
+      } else {
+        this.log("[EmbeddingService] WARNING: ort.env.wasm is falsy");
       }
 
-      console.log("[EmbeddingService] Step 4: importing @huggingface/transformers...");
+      this.log("[EmbeddingService] Step 3/5: importing @huggingface/transformers...");
       const { pipeline: createPipeline, env } = await import("@huggingface/transformers");
       env.cacheDir = this.modelCacheDir;
       env.allowRemoteModels = true;
+      this.log(`[EmbeddingService] cacheDir = ${this.modelCacheDir}`);
 
-      console.log("[EmbeddingService] Step 5: creating pipeline...");
+      this.log("[EmbeddingService] Step 4/5: creating pipeline (downloading model if needed)...");
       pipeline = (await createPipeline(
         "feature-extraction",
         "Xenova/all-MiniLM-L6-v2",
         { dtype: "fp32" }
       )) as unknown as Pipeline;
 
-      console.log("[EmbeddingService] Step 6: ready!");
+      this.log("[EmbeddingService] Step 5/5: ready!");
       this.ready = true;
-      return true;
+      return { ok: true };
     } catch (err) {
-      console.error("EmbeddingService: Failed to initialize model:", err);
-      return false;
+      const msg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.log(`[EmbeddingService] FAILED: ${msg}`);
+      if (stack) this.log(stack);
+      return { ok: false, error: msg };
     }
   }
 
