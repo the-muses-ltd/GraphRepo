@@ -23,35 +23,34 @@
   <line x1="88" y1="204" x2="168" y2="204" stroke="#313244" stroke-width="1.2" stroke-linecap="round"/>
 
   <!-- Glow effects for main nodes -->
-  <circle cx="128" cy="92" r="20" fill="#89B4FA" opacity="0.15"/>
-  <circle cx="68" cy="58" r="14" fill="#A6E3A1" opacity="0.12"/>
-  <circle cx="192" cy="62" r="14" fill="#F9E2AF" opacity="0.12"/>
+  <circle cx="128" cy="92" r="20" fill="#FFFFFF" opacity="0.08"/>
+  <circle cx="68" cy="58" r="14" fill="#FFFFFF" opacity="0.06"/>
+  <circle cx="192" cy="62" r="14" fill="#FFFFFF" opacity="0.06"/>
 
   <!-- Nodes -->
-  <!-- Central node (Module/Hub) - Blue -->
-  <circle cx="128" cy="92" r="14" fill="#89B4FA"/>
-  <circle cx="128" cy="92" r="14" stroke="#B4D0FB" stroke-width="1" opacity="0.5"/>
+  <!-- Central node (Hub) -->
+  <circle cx="128" cy="92" r="14" fill="#FFFFFF"/>
 
-  <!-- Top-left node (Function) - Green -->
-  <circle cx="68" cy="58" r="10" fill="#A6E3A1"/>
+  <!-- Top-left node -->
+  <circle cx="68" cy="58" r="10" fill="#E0E0E0"/>
 
-  <!-- Top-right node (Class) - Yellow -->
-  <circle cx="192" cy="62" r="10" fill="#F9E2AF"/>
+  <!-- Top-right node -->
+  <circle cx="192" cy="62" r="10" fill="#E0E0E0"/>
 
-  <!-- Mid-left node (File) - Mauve -->
-  <circle cx="56" cy="138" r="10" fill="#CBA6F7"/>
+  <!-- Mid-left node -->
+  <circle cx="56" cy="138" r="10" fill="#C0C0C0"/>
 
-  <!-- Mid-right node (Interface) - Peach -->
-  <circle cx="198" cy="142" r="10" fill="#FAB387"/>
+  <!-- Mid-right node -->
+  <circle cx="198" cy="142" r="10" fill="#C0C0C0"/>
 
-  <!-- Center-bottom node (Variable) - Teal -->
-  <circle cx="128" cy="168" r="10" fill="#94E2D5"/>
+  <!-- Center-bottom node -->
+  <circle cx="128" cy="168" r="10" fill="#D0D0D0"/>
 
-  <!-- Bottom-left node (Import) - Pink -->
-  <circle cx="88" cy="204" r="8" fill="#F5C2E7"/>
+  <!-- Bottom-left node -->
+  <circle cx="88" cy="204" r="8" fill="#A0A0A0"/>
 
-  <!-- Bottom-right node (Community) - Red -->
-  <circle cx="168" cy="204" r="8" fill="#F38BA8"/>
+  <!-- Bottom-right node -->
+  <circle cx="168" cy="204" r="8" fill="#A0A0A0"/>
 
   <!-- Small accent dots -->
   <circle cx="42" cy="88" r="3.5" fill="#585B70"/>
