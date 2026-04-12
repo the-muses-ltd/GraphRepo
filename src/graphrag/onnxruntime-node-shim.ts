@@ -1,7 +1,9 @@
 /**
- * Empty shim for onnxruntime-node.
- * esbuild aliases 'onnxruntime-node' to this file so the top-level import
- * in Transformers.js doesn't crash. The actual ONNX backend is forced to
- * onnxruntime-web via Symbol.for('onnxruntime') in embeddings.ts.
+ * Shim that redirects onnxruntime-node to onnxruntime-web.
+ * esbuild aliases 'onnxruntime-node' to this file so Transformers.js's
+ * IS_NODE_ENV branch uses the WASM backend instead of native binaries.
  */
-export default {};
+// @ts-ignore — onnxruntime-web types don't resolve via package.json "exports"
+export * from "onnxruntime-web";
+// @ts-ignore
+export { default } from "onnxruntime-web";

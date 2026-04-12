@@ -55,13 +55,10 @@ export class EmbeddingService {
       // @ts-ignore — onnxruntime-web types don't resolve via package.json "exports"
       const ort = await import("onnxruntime-web");
 
-      console.log("[EmbeddingService] Step 2: setting global override...");
-      const ORT_SYMBOL = Symbol.for("onnxruntime");
-      if (!(ORT_SYMBOL in globalThis)) {
-        (globalThis as Record<symbol, unknown>)[ORT_SYMBOL] = ort;
-      }
-
-      console.log("[EmbeddingService] Step 3: configuring WASM paths...");
+      console.log("[EmbeddingService] Step 2: configuring WASM paths...");
+      // No Symbol.for('onnxruntime') override needed — the onnxruntime-node shim
+      // re-exports onnxruntime-web, so Transformers.js's IS_NODE_ENV branch uses
+      // the WASM backend directly and correctly populates supportedDevices.
       if (ort.env?.wasm) {
         ort.env.wasm.numThreads = 1;
         const wasmDir = resolveOnnxWasmDir();
