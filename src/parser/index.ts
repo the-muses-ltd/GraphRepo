@@ -41,9 +41,9 @@ export const parseRepository = async (
     onProgress?.({ file: file.path, current: i + 1, total });
 
     try {
-      const codeLanguages = ["typescript", "javascript", "python"];
+      const codeLanguages = ["typescript", "javascript", "python", "c", "cpp", "csharp", "swift"];
       if (codeLanguages.includes(file.language)) {
-        const parser = await getParser(file.language as "typescript" | "javascript" | "python");
+        const parser = await getParser(file.language);
         const parsed = extractFromFile(
           file.path,
           file.content,

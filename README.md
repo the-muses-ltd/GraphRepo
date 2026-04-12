@@ -3,6 +3,11 @@
 A knowledge graph for your codebase. GraphRepo parses your repository into an in-memory graph that captures every file, function, class, import, and call relationship — then exposes it to AI code assistants via MCP so they can traverse the full interconnected structure of your code, not just individual files.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![C](https://img.shields.io/badge/C-A8B9CC?logo=c&logoColor=black)
+![C++](https://img.shields.io/badge/C++-00599C?logo=cplusplus&logoColor=white)
+![C#](https://img.shields.io/badge/C%23-239120?logo=csharp&logoColor=white)
+![Swift](https://img.shields.io/badge/Swift-F05138?logo=swift&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-Claude-cc785c)
 [![VS Code Marketplace](https://vsmarketplacebadges.dev/version/the-muses-ltd.graphrepo.svg)](https://marketplace.visualstudio.com/items?itemName=the-muses-ltd.graphrepo)
 
@@ -14,7 +19,7 @@ AI assistants read files one at a time. They can't see how your code connects �
 
 ## What it does
 
-- **Parses** your repo using Tree-sitter AST analysis (TypeScript, JavaScript, Python) and indexes all file types
+- **Parses** your repo using Tree-sitter AST analysis (TypeScript, JavaScript, Python, C, C++, C#, Swift) and indexes all file types
 - **Builds** an in-memory knowledge graph of files, functions, classes, imports, call chains, and folder structure
 - **Detects communities** using Louvain algorithm to identify code modules and clusters
 - **Generates embeddings** using Transformers.js for semantic search (local, no API keys)
@@ -42,7 +47,7 @@ code --install-extension the-muses-ltd.graphrepo
 Download the latest `.vsix` from [GitHub Releases](https://github.com/the-muses-ltd/GraphRepo/releases), then:
 
 ```bash
-code --install-extension graphrepo-0.2.0.vsix
+code --install-extension graphrepo-0.7.0.vsix
 ```
 
 ### 2. Parse your repo
@@ -126,7 +131,7 @@ GraphRepo includes a VS Code extension with a sidebar graph view:
 
 ```
 src/
-├── parser/          # Tree-sitter AST parsing (TS, JS, Python)
+├── parser/          # Tree-sitter AST parsing (TS, JS, Python, C, C++, C#, Swift)
 │   └── languages/   # Per-language extraction logic
 ├── graph/           # Graphology in-memory graph (store, sync, queries, persistence)
 ├── graphrag/        # Community detection (Louvain) + Transformers.js embeddings

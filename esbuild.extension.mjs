@@ -39,6 +39,10 @@ function copyWasmFiles() {
     ["node_modules/tree-sitter-wasms/out/tree-sitter-typescript.wasm", "tree-sitter-typescript.wasm"],
     ["node_modules/tree-sitter-wasms/out/tree-sitter-javascript.wasm", "tree-sitter-javascript.wasm"],
     ["node_modules/tree-sitter-wasms/out/tree-sitter-python.wasm", "tree-sitter-python.wasm"],
+    ["node_modules/tree-sitter-wasms/out/tree-sitter-c.wasm", "tree-sitter-c.wasm"],
+    ["node_modules/tree-sitter-wasms/out/tree-sitter-cpp.wasm", "tree-sitter-cpp.wasm"],
+    ["node_modules/tree-sitter-wasms/out/tree-sitter-c_sharp.wasm", "tree-sitter-c_sharp.wasm"],
+    ["node_modules/tree-sitter-wasms/out/tree-sitter-swift.wasm", "tree-sitter-swift.wasm"],
     // ONNX Runtime WASM (CPU+SIMD, no WebGPU)
     ["node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm", "ort-wasm-simd-threaded.wasm"],
     ["node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs", "ort-wasm-simd-threaded.mjs"],

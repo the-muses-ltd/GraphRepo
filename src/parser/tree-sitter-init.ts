@@ -51,6 +51,10 @@ const LANGUAGE_WASM: Record<string, string> = {
   typescript: path.join(WASM_DIR, "tree-sitter-typescript.wasm"),
   javascript: path.join(WASM_DIR, "tree-sitter-javascript.wasm"),
   python: path.join(WASM_DIR, "tree-sitter-python.wasm"),
+  c: path.join(WASM_DIR, "tree-sitter-c.wasm"),
+  cpp: path.join(WASM_DIR, "tree-sitter-cpp.wasm"),
+  csharp: path.join(WASM_DIR, "tree-sitter-c_sharp.wasm"),
+  swift: path.join(WASM_DIR, "tree-sitter-swift.wasm"),
 };
 
 const ensureInit = async () => {

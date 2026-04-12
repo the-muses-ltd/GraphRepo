@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const LanguageSchema = z.enum(["typescript", "javascript", "python", "json", "markdown", "css", "html", "other"]);
+export const LanguageSchema = z.enum(["typescript", "javascript", "python", "c", "cpp", "csharp", "swift", "json", "markdown", "css", "html", "other"]);
 export type Language = z.infer<typeof LanguageSchema>;
 
 export const EXTENSION_TO_LANGUAGE: Record<string, Language> = {
@@ -9,6 +9,16 @@ export const EXTENSION_TO_LANGUAGE: Record<string, Language> = {
   ".js": "javascript",
   ".jsx": "javascript",
   ".py": "python",
+  ".c": "c",
+  ".h": "c",
+  ".cpp": "cpp",
+  ".cxx": "cpp",
+  ".cc": "cpp",
+  ".hpp": "cpp",
+  ".hxx": "cpp",
+  ".hh": "cpp",
+  ".cs": "csharp",
+  ".swift": "swift",
   ".json": "json",
   ".md": "markdown",
   ".mdx": "markdown",

@@ -3,11 +3,19 @@ import type { ParsedImport, Language } from "../types.js";
 
 const TS_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
 const PY_EXTENSIONS = [".py"];
+const C_EXTENSIONS = [".c", ".h"];
+const CPP_EXTENSIONS = [".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".hh", ".h"];
 const INDEX_FILES_TS = ["index.ts", "index.tsx", "index.js", "index.jsx"];
 const INDEX_FILES_PY = ["__init__.py"];
 
-const extensionsFor = (language: Language): string[] =>
-  language === "python" ? PY_EXTENSIONS : TS_EXTENSIONS;
+const extensionsFor = (language: Language): string[] => {
+  switch (language) {
+    case "python": return PY_EXTENSIONS;
+    case "c": return C_EXTENSIONS;
+    case "cpp": return CPP_EXTENSIONS;
+    default: return TS_EXTENSIONS;
+  }
+};
 
 const indexFilesFor = (language: Language): string[] =>
   language === "python" ? INDEX_FILES_PY : INDEX_FILES_TS;

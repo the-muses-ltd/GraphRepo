@@ -45,6 +45,7 @@ export type NodeDetails = {
 };
 
 // Acquire VS Code API once
+declare function acquireVsCodeApi(): { postMessage(message: unknown): void };
 const vscode = acquireVsCodeApi();
 
 let requestId = 0;
