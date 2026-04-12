@@ -4,27 +4,50 @@ import {
   Node as TSNode,
 } from "web-tree-sitter";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import type { Language } from "../types.js";
 
-// Re-export types for use in other modules
 export type Parser = TSParser;
 export type SyntaxNode = TSNode;
 
 let initialized = false;
 const parserCache = new Map<Language, TSParser>();
 
-const WASM_DIR = path.resolve(
-  fileURLToPath(import.meta.url),
-  "..",
-  "..",
-  "..",
-  "node_modules",
-  "tree-sitter-wasms",
-  "out"
-);
+/**
+ * Resolve the WASM directory. Supports two layouts:
+ * 1. Bundled extension: dist/wasm/ (relative to dist/extension/extension.cjs)
+ * 2. Development (tsx): node_modules/tree-sitter-wasms/out/
+ */
+function resolveWasmDir(): string {
+  const thisFile = fileURLToPath(import.meta.url);
+  const thisDir = path.dirname(thisFile);
 
-const LANGUAGE_WASM: Record<Language, string> = {
+  // Check if bundled WASM files exist (dist/wasm/)
+  const bundledDir = path.resolve(thisDir, "..", "wasm");
+  if (fs.existsSync(path.join(bundledDir, "tree-sitter-typescript.wasm"))) {
+    return bundledDir;
+  }
+
+  // Fallback to node_modules for development
+  return path.resolve(thisDir, "..", "..", "node_modules", "tree-sitter-wasms", "out");
+}
+
+function resolveCoreWasm(): string {
+  const thisFile = fileURLToPath(import.meta.url);
+  const thisDir = path.dirname(thisFile);
+
+  const bundledPath = path.resolve(thisDir, "..", "wasm", "tree-sitter.wasm");
+  if (fs.existsSync(bundledPath)) {
+    return bundledPath;
+  }
+
+  return path.resolve(thisDir, "..", "..", "node_modules", "web-tree-sitter", "tree-sitter.wasm");
+}
+
+const WASM_DIR = resolveWasmDir();
+
+const LANGUAGE_WASM: Record<string, string> = {
   typescript: path.join(WASM_DIR, "tree-sitter-typescript.wasm"),
   javascript: path.join(WASM_DIR, "tree-sitter-javascript.wasm"),
   python: path.join(WASM_DIR, "tree-sitter-python.wasm"),
@@ -32,17 +55,9 @@ const LANGUAGE_WASM: Record<Language, string> = {
 
 const ensureInit = async () => {
   if (!initialized) {
+    const coreWasm = resolveCoreWasm();
     await TSParser.init({
-      locateFile: () =>
-        path.resolve(
-          fileURLToPath(import.meta.url),
-          "..",
-          "..",
-          "..",
-          "node_modules",
-          "web-tree-sitter",
-          "tree-sitter.wasm"
-        ),
+      locateFile: () => coreWasm,
     });
     initialized = true;
   }
@@ -54,8 +69,13 @@ export const getParser = async (language: Language): Promise<TSParser> => {
 
   await ensureInit();
 
+  const wasmPath = LANGUAGE_WASM[language];
+  if (!wasmPath) {
+    throw new Error(`No tree-sitter WASM available for language: ${language}`);
+  }
+
   const parser = new TSParser();
-  const lang = await TSLanguage.load(LANGUAGE_WASM[language]);
+  const lang = await TSLanguage.load(wasmPath);
   parser.setLanguage(lang);
   parserCache.set(language, parser);
   return parser;

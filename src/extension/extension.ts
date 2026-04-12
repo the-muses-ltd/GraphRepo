@@ -2,35 +2,71 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import { Neo4jService, type Neo4jConfig } from "./neo4j-service.js";
+import { GraphService } from "./graph-service.js";
 import { GraphViewProvider } from "./graph-view-provider.js";
-import type { Config } from "../config.js";
+import { getStore, setStore, hasStore } from "../graph/store.js";
+import { loadGraph, saveGraph, getGraphStorePath, getEmbeddingsStorePath } from "../graph/persistence.js";
+import { EmbeddingService, generateEmbeddings } from "../graphrag/embeddings.js";
+import { VectorStore } from "../graphrag/vector-store.js";
 
-let neo4jService: Neo4jService | undefined;
+let graphService: GraphService | undefined;
 let graphViewProvider: GraphViewProvider | undefined;
+let embeddingService: EmbeddingService | undefined;
+let vectorStore: VectorStore | undefined;
 
-function getNeo4jConfig(): Neo4jConfig {
-  const config = vscode.workspace.getConfiguration("graphrepo");
-  return {
-    uri: config.get("neo4j.uri", "bolt://localhost:7687"),
-    username: config.get("neo4j.username", "neo4j"),
-    password: config.get("neo4j.password", "graphrepo-password"),
-    database: config.get("neo4j.database", "neo4j"),
-  };
-}
+function writeMcpConfig(extensionPath: string, workspaceRoot: string) {
+  const mcpPath = path.join(workspaceRoot, ".mcp.json");
+  const mcpServerPath = path.join(extensionPath, "dist", "mcp-server.cjs");
+  const graphDataFile = getGraphStorePath(workspaceRoot);
 
-function getService(): Neo4jService {
-  if (!neo4jService) {
-    neo4jService = new Neo4jService(getNeo4jConfig());
+  let config: Record<string, unknown> = {};
+  if (fs.existsSync(mcpPath)) {
+    try { config = JSON.parse(fs.readFileSync(mcpPath, "utf-8")); } catch {}
   }
-  return neo4jService;
+  const mcpServers = (config.mcpServers as Record<string, unknown>) ?? {};
+  mcpServers.graphrepo = {
+    command: "node",
+    args: [mcpServerPath, "serve"],
+    env: {
+      GRAPHREPO_DATA_FILE: graphDataFile,
+      GRAPHREPO_REPO_PATH: workspaceRoot,
+    },
+  };
+  config.mcpServers = mcpServers;
+  fs.writeFileSync(mcpPath, JSON.stringify(config, null, 2), "utf-8");
 }
 
-export function activate(context: vscode.ExtensionContext) {
-  const service = getService();
+function getWorkspaceRoot(): string | null {
+  const ws = vscode.workspace.workspaceFolders?.[0];
+  return ws?.uri.fsPath ?? null;
+}
+
+export async function activate(context: vscode.ExtensionContext) {
+  // Load persisted graph from workspace
+  const wsRoot = getWorkspaceRoot();
+  if (wsRoot) {
+    const graphPath = getGraphStorePath(wsRoot);
+    const loaded = await loadGraph(graphPath);
+    if (loaded) {
+      setStore(loaded);
+    }
+  }
+
+  graphService = new GraphService();
+
+  // Initialize embedding service (model loads lazily on first use)
+  const modelCacheDir = path.join(context.globalStorageUri.fsPath, "model-cache");
+  embeddingService = new EmbeddingService(modelCacheDir);
+  vectorStore = new VectorStore();
+
+  // Load persisted embeddings
+  if (wsRoot) {
+    const embPath = getEmbeddingsStorePath(wsRoot);
+    vectorStore.load(embPath);
+  }
 
   // Register the sidebar webview provider
-  graphViewProvider = new GraphViewProvider(context.extensionUri, service);
+  graphViewProvider = new GraphViewProvider(context.extensionUri, graphService);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       GraphViewProvider.viewType,
@@ -58,34 +94,6 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       const repoPath = workspaceFolder.uri.fsPath;
-      const neo4jConfig = getNeo4jConfig();
-
-      const config: Config = {
-        neo4j: neo4jConfig,
-        repoPath,
-        ignorePaths: [
-          "node_modules",
-          ".git",
-          "dist",
-          "build",
-          "__pycache__",
-          ".venv",
-          ".next",
-          "coverage",
-          ".cache",
-        ],
-        supportedExtensions: [
-          ".ts", ".tsx", ".js", ".jsx", ".py",
-          ".json", ".md", ".mdx",
-          ".css", ".scss", ".less",
-          ".html", ".htm", ".svg",
-          ".png", ".jpg", ".jpeg", ".gif", ".ico",
-          ".yaml", ".yml", ".toml", ".xml", ".txt",
-          ".sh", ".bash", ".zsh", ".bat", ".cmd", ".ps1",
-          ".sql", ".graphql", ".gql", ".proto",
-          ".lock",
-        ],
-      };
 
       await vscode.window.withProgress(
         {
@@ -98,7 +106,26 @@ export function activate(context: vscode.ExtensionContext) {
             progress.report({ message: "Analyzing files..." });
 
             const { parseRepository } = await import("../parser/index.js");
-            const { syncToNeo4j } = await import("../graph/index.js");
+            const { syncToGraph } = await import("../graph/sync.js");
+
+            const config = {
+              repoPath,
+              ignorePaths: [
+                "node_modules", ".git", "dist", "build",
+                "__pycache__", ".venv", ".next", "coverage", ".cache",
+              ],
+              supportedExtensions: [
+                ".ts", ".tsx", ".js", ".jsx", ".py",
+                ".json", ".md", ".mdx",
+                ".css", ".scss", ".less",
+                ".html", ".htm", ".svg",
+                ".png", ".jpg", ".jpeg", ".gif", ".ico",
+                ".yaml", ".yml", ".toml", ".xml", ".txt",
+                ".sh", ".bash", ".zsh", ".bat", ".cmd", ".ps1",
+                ".sql", ".graphql", ".gql", ".proto",
+                ".lock",
+              ],
+            };
 
             const parsed = await parseRepository(config, (info: { current: number; total: number; file: string }) => {
               progress.report({
@@ -107,12 +134,61 @@ export function activate(context: vscode.ExtensionContext) {
               });
             });
 
-            progress.report({ message: "Syncing to Neo4j..." });
-            const result = await syncToNeo4j(parsed, config);
+            progress.report({ message: "Building graph..." });
+            const result = syncToGraph(parsed, repoPath);
 
-            vscode.window.showInformationMessage(
-              `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes`
-            );
+            // Run community detection
+            progress.report({ message: "Detecting communities..." });
+            const { detectCommunities } = await import("../graphrag/communities.js");
+            detectCommunities(getStore());
+
+            // Save graph to disk
+            progress.report({ message: "Saving graph..." });
+            const graphPath = getGraphStorePath(repoPath);
+            await saveGraph(getStore(), graphPath);
+
+            // Auto-configure MCP for Claude Code
+            writeMcpConfig(context.extensionPath, repoPath);
+
+            // Generate embeddings (non-blocking — if model isn't cached yet, download it)
+            if (embeddingService && vectorStore) {
+              progress.report({ message: "Generating embeddings..." });
+              try {
+                const initialized = await embeddingService.initialize();
+                if (initialized) {
+                  vectorStore.clear();
+                  const count = await generateEmbeddings(
+                    getStore(),
+                    embeddingService,
+                    vectorStore,
+                    (current, total) => {
+                      progress.report({ message: `Embedding ${current}/${total}...` });
+                    },
+                  );
+                  const embPath = getEmbeddingsStorePath(repoPath);
+                  vectorStore.save(embPath);
+                  vscode.window.showInformationMessage(
+                    `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes. Embedded ${count} entities.`
+                  );
+                } else {
+                  vscode.window.showInformationMessage(
+                    `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes. (Embeddings skipped — model not available)`
+                  );
+                }
+              } catch (embErr) {
+                // Non-fatal — embeddings enhance search but are not required
+                vscode.window.showInformationMessage(
+                  `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes. (Embedding generation failed)`
+                );
+              }
+            } else {
+              vscode.window.showInformationMessage(
+                `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes`
+              );
+            }
+
+            // Refresh the graph view
+            graphViewProvider?.refresh();
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             vscode.window.showErrorMessage(`GraphRepo parse failed: ${msg}`);
@@ -127,6 +203,11 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "graphrepo.searchCodeGraph",
       async () => {
+        if (!hasStore()) {
+          vscode.window.showWarningMessage("GraphRepo: No graph data. Run 'Parse Workspace' first.");
+          return;
+        }
+
         const quickPick = vscode.window.createQuickPick();
         quickPick.placeholder = "Search functions, classes, interfaces...";
         quickPick.matchOnDescription = true;
@@ -142,7 +223,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
             quickPick.busy = true;
             try {
-              const results = await service.searchNodes(value);
+              const results = await graphService!.searchNodes(value);
               quickPick.items = results.map((r) => ({
                 label: `$(symbol-${getSymbolIcon(r.type)}) ${r.name}`,
                 description: r.qualifiedName,
@@ -161,7 +242,6 @@ export function activate(context: vscode.ExtensionContext) {
         quickPick.onDidAccept(() => {
           const selected = quickPick.selectedItems[0] as any;
           if (selected?.id && graphViewProvider) {
-            // Focus the sidebar view and center on the node
             vscode.commands.executeCommand("graphrepo.graphView.focus");
             setTimeout(() => graphViewProvider!.centerOnNode(selected.id), 500);
           }
@@ -174,14 +254,30 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  // Command: Refresh graph (reload data in sidebar)
+  // Command: Refresh graph
   context.subscriptions.push(
     vscode.commands.registerCommand("graphrepo.refreshGraph", () => {
       graphViewProvider?.refresh();
     })
   );
 
-  // --- Editor tracking: sync graph view to active file/cursor ---
+  // Command: Configure MCP for Claude
+  context.subscriptions.push(
+    vscode.commands.registerCommand("graphrepo.configureMcp", async () => {
+      const root = getWorkspaceRoot();
+      if (!root) {
+        vscode.window.showErrorMessage("No workspace folder open.");
+        return;
+      }
+
+      writeMcpConfig(context.extensionPath, root);
+      vscode.window.showInformationMessage(
+        "GraphRepo: MCP configured in .mcp.json — restart Claude Code to connect."
+      );
+    })
+  );
+
+  // --- Editor tracking ---
   const getRelativePath = (uri: vscode.Uri): string | null => {
     const ws = vscode.workspace.getWorkspaceFolder(uri);
     if (!ws) return null;
@@ -196,7 +292,7 @@ export function activate(context: vscode.ExtensionContext) {
     trackDebounce = setTimeout(() => {
       const rel = getRelativePath(editor.document.uri);
       if (!rel) return;
-      const line = editor.selection.active.line + 1; // VS Code is 0-based, graph is 1-based
+      const line = editor.selection.active.line + 1;
       graphViewProvider?.trackEditor(rel, line);
     }, 300);
   };
@@ -204,17 +300,14 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(trackEditor)
   );
-
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorSelection((e) => {
       trackEditor(e.textEditor);
     })
   );
-
-  // Track the currently active editor on activation
   trackEditor(vscode.window.activeTextEditor);
 
-  // --- MCP event watcher: visualize what MCP tools are querying ---
+  // --- MCP event watcher ---
   const mcpEventFile = path.join(os.tmpdir(), "graphrepo-mcp-events.json");
   let lastMcpTimestamp = 0;
 
@@ -226,19 +319,18 @@ export function activate(context: vscode.ExtensionContext) {
       lastMcpTimestamp = event.timestamp;
       graphViewProvider?.handleMcpEvent(event);
     } catch {
-      // File doesn't exist yet or parse error — ignore
+      // ignore
     }
   };
 
   try {
-    // Create the file if it doesn't exist so we can watch it
     if (!fs.existsSync(mcpEventFile)) {
       fs.writeFileSync(mcpEventFile, "{}");
     }
     const watcher = fs.watch(mcpEventFile, () => handleMcpEvent());
     context.subscriptions.push({ dispose: () => watcher.close() });
   } catch {
-    // If we can't watch, MCP visualization just won't work — non-critical
+    // non-critical
   }
 }
 
@@ -255,6 +347,6 @@ function getSymbolIcon(type: string): string {
 }
 
 export function deactivate() {
-  neo4jService?.dispose();
-  neo4jService = undefined;
+  graphService?.dispose();
+  graphService = undefined;
 }

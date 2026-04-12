@@ -1,8 +1,8 @@
 {
   "name": "graphrepo",
   "displayName": "GraphRepo",
-  "version": "0.1.0",
-  "description": "Neo4j + GraphRAG powered tool for visualizing and querying code repositories",
+  "version": "0.2.0",
+  "description": "GraphRAG-powered tool for visualizing and querying code repositories",
   "publisher": "the-muses-ltd",
   "repository": {
     "type": "git",
@@ -52,6 +52,10 @@
         "command": "graphrepo.refreshGraph",
         "title": "GraphRepo: Refresh Graph",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "graphrepo.configureMcp",
+        "title": "GraphRepo: Configure MCP for Claude"
       }
     ],
     "menus": {
@@ -75,28 +79,7 @@
     },
     "configuration": {
       "title": "GraphRepo",
-      "properties": {
-        "graphrepo.neo4j.uri": {
-          "type": "string",
-          "default": "bolt://localhost:7687",
-          "description": "Neo4j connection URI"
-        },
-        "graphrepo.neo4j.username": {
-          "type": "string",
-          "default": "neo4j",
-          "description": "Neo4j username"
-        },
-        "graphrepo.neo4j.password": {
-          "type": "string",
-          "default": "graphrepo-password",
-          "description": "Neo4j password"
-        },
-        "graphrepo.neo4j.database": {
-          "type": "string",
-          "default": "neo4j",
-          "description": "Neo4j database name"
-        }
-      }
+      "properties": {}
     }
   },
   "scripts": {
@@ -107,26 +90,24 @@
     "build:web": "esbuild src/web/main.ts --bundle --outfile=dist/web/bundle.js --format=esm --platform=browser && cp src/web/index.html src/web/styles.css dist/web/",
     "build:ext": "node esbuild.extension.mjs",
     "build:webview": "node esbuild.webview.mjs",
+    "build:mcp": "node esbuild.mcp-server.mjs",
     "build:vscode": "npm run build:ext && npm run build:webview",
     "watch:ext": "node esbuild.extension.mjs --watch",
     "watch:webview": "node esbuild.webview.mjs --watch",
-    "vscode:prepublish": "npm run build:vscode",
+    "vscode:prepublish": "npm run build:vscode && npm run build:mcp",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fastify/static": "^8.0.0",
+    "@huggingface/transformers": "^3.0.0",
     "@modelcontextprotocol/sdk": "^1.12.0",
     "commander": "^13.0.0",
     "d3-drag": "^3.0.0",
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
-    "dotenv": "^16.4.0",
-    "fastify": "^5.0.0",
     "graphology": "^0.26.0",
     "graphology-communities-louvain": "^2.0.2",
     "graphology-types": "^0.24.8",
-    "neo4j-driver": "^5.27.0",
     "tree-sitter-wasms": "^0.1.13",
     "web-tree-sitter": "^0.25.0",
     "zod": "^3.24.0"

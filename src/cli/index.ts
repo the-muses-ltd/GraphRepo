@@ -7,16 +7,13 @@ import { communitiesCommand } from "./commands/communities.js";
 const program = new Command()
   .name("graphrepo")
   .description(
-    "Neo4j + GraphRAG powered tool for visualizing and querying code repositories"
+    "GraphRAG-powered tool for visualizing and querying code repositories"
   )
-  .version("0.1.0");
+  .version("0.2.0");
 
 program
   .command("parse <repoPath>")
-  .description("Parse a repository and store its structure in Neo4j")
-  .option("--neo4j-uri <uri>", "Neo4j URI")
-  .option("--neo4j-user <user>", "Neo4j username")
-  .option("--neo4j-password <password>", "Neo4j password")
+  .description("Parse a repository and store its graph in .graphrepo/")
   .option("--clear", "Clear existing graph before parsing", false)
   .action(parseCommand);
 
@@ -34,7 +31,6 @@ program
 program
   .command("communities [repoPath]")
   .description("Detect code communities using Louvain algorithm")
-  .option("--no-clear", "Keep existing communities (default: clear first)")
   .action(communitiesCommand);
 
 program.parse();

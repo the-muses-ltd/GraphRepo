@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { Neo4jService } from "./neo4j-service.js";
+import type { GraphQueryService } from "./graph-service.js";
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
@@ -12,7 +12,7 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly extensionUri: vscode.Uri,
-    private readonly neo4j: Neo4jService
+    private readonly graphService: GraphQueryService
   ) {}
 
   private getRepoName(): string | null {
@@ -81,13 +81,13 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
       let data: unknown;
       switch (type) {
         case "fetchGraph":
-          data = await this.neo4j.getGraphData(payload.types, payload.limit, this.getRepoName());
+          data = await this.graphService.getGraphData(payload.types, payload.limit, this.getRepoName());
           break;
         case "searchCode":
-          data = await this.neo4j.searchNodes(payload.query);
+          data = await this.graphService.searchNodes(payload.query);
           break;
         case "fetchNodeDetails":
-          data = await this.neo4j.getNodeDetails(payload.id);
+          data = await this.graphService.getNodeDetails(payload.id);
           break;
         default:
           throw new Error(`Unknown message type: ${type}`);
@@ -110,7 +110,6 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
 
     const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, relativePath);
     try {
-      // Suppress editor tracking to avoid a feedback loop
       this.suppressTracking = true;
       const doc = await vscode.workspace.openTextDocument(fileUri);
       const lineNum = Math.max(0, (line ?? 1) - 1);
@@ -119,7 +118,6 @@ export class GraphViewProvider implements vscode.WebviewViewProvider {
         selection: range,
         preserveFocus: false,
       });
-      // Re-enable after a short delay to let events settle
       setTimeout(() => { this.suppressTracking = false; }, 500);
     } catch {
       this.suppressTracking = false;
