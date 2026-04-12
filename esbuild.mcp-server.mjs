@@ -10,12 +10,10 @@ await esbuild.build({
   platform: "node",
   target: "node18",
   sourcemap: true,
-  external: [
-    // sharp is a native image processing dep of Transformers.js — unused for text embeddings
-    "sharp",
-  ],
+  external: [],
   alias: {
     "onnxruntime-node": "./src/graphrag/onnxruntime-node-shim.ts",
+    "sharp": "./src/graphrag/sharp-shim.ts",
   },
   // Shim import.meta.url for CJS output (needed by tree-sitter-init.ts)
   define: {
