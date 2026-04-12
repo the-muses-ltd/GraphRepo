@@ -1,4 +1,6 @@
 import * as esbuild from "esbuild";
+import { cpSync, mkdirSync, existsSync } from "fs";
+import { join } from "path";
 
 await esbuild.build({
   entryPoints: ["src/cli/index.ts"],
@@ -24,4 +26,26 @@ await esbuild.build({
   },
 });
 
+/** Copy ONNX WASM files into dist/wasm/ for the standalone MCP server */
+function copyWasmFiles() {
+  const wasmDir = "dist/wasm";
+  mkdirSync(wasmDir, { recursive: true });
+
+  const wasmSources = [
+    ["node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm", "ort-wasm-simd-threaded.wasm"],
+    ["node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs", "ort-wasm-simd-threaded.mjs"],
+  ];
+
+  for (const [src, dest] of wasmSources) {
+    if (existsSync(src)) {
+      cpSync(src, join(wasmDir, dest));
+      console.log(`  Copied ${dest}`);
+    } else {
+      console.warn(`  Warning: ${src} not found, skipping`);
+    }
+  }
+}
+
+console.log("Copying WASM files...");
+copyWasmFiles();
 console.log("Built dist/mcp-server.cjs");

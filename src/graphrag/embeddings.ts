@@ -3,7 +3,38 @@
  * Runs ONNX models in-process — no API keys, no external services.
  */
 
+import path from "path";
+import fs from "fs";
+import { fileURLToPath, pathToFileURL } from "url";
+
 type Pipeline = (texts: string[], options?: Record<string, unknown>) => Promise<{ data: Float32Array; dims: number[] }>;
+
+/**
+ * Resolve the directory containing ONNX WASM files.
+ * Returns a file:// URL with trailing slash (required by onnxruntime-web's URL resolution).
+ * Same two-layout pattern as src/parser/tree-sitter-init.ts.
+ */
+function resolveOnnxWasmDir(): string {
+  const thisFile = fileURLToPath(import.meta.url);
+  const thisDir = path.dirname(thisFile);
+
+  // Bundled layouts:
+  //   dist/extension/extension.cjs → ../wasm → dist/wasm/
+  //   dist/mcp-server.cjs          → wasm    → dist/wasm/
+  for (const candidate of [
+    path.resolve(thisDir, "..", "wasm"),
+    path.resolve(thisDir, "wasm"),
+  ]) {
+    if (fs.existsSync(path.join(candidate, "ort-wasm-simd-threaded.wasm"))) {
+      return pathToFileURL(candidate).href + "/";
+    }
+  }
+
+  // Dev fallback (tsx): node_modules/onnxruntime-web/dist/
+  return pathToFileURL(
+    path.resolve(thisDir, "..", "..", "node_modules", "onnxruntime-web", "dist"),
+  ).href + "/";
+}
 
 let pipeline: Pipeline | null = null;
 
@@ -29,9 +60,11 @@ export class EmbeddingService {
       if (!(ORT_SYMBOL in globalThis)) {
         (globalThis as Record<symbol, unknown>)[ORT_SYMBOL] = ort;
       }
-      // Disable multi-threading to avoid SharedArrayBuffer issues in VS Code host
+      // Configure WASM runtime: single-threaded + local file paths
       if (ort.env?.wasm) {
         ort.env.wasm.numThreads = 1;
+        // Point to our bundled WASM files (file:// URL required for Node.js import())
+        ort.env.wasm.wasmPaths = resolveOnnxWasmDir();
       }
 
       // Now import Transformers.js — it will see our onnxruntime-web override

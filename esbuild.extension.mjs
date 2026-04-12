@@ -31,16 +31,20 @@ const ctx = await esbuild.context({
   },
 });
 
-/** Copy tree-sitter WASM files into dist/wasm/ */
+/** Copy tree-sitter and ONNX WASM files into dist/wasm/ */
 function copyWasmFiles() {
   const wasmDir = "dist/wasm";
   mkdirSync(wasmDir, { recursive: true });
 
   const wasmSources = [
+    // Tree-sitter
     ["node_modules/web-tree-sitter/tree-sitter.wasm", "tree-sitter.wasm"],
     ["node_modules/tree-sitter-wasms/out/tree-sitter-typescript.wasm", "tree-sitter-typescript.wasm"],
     ["node_modules/tree-sitter-wasms/out/tree-sitter-javascript.wasm", "tree-sitter-javascript.wasm"],
     ["node_modules/tree-sitter-wasms/out/tree-sitter-python.wasm", "tree-sitter-python.wasm"],
+    // ONNX Runtime WASM (CPU+SIMD, no WebGPU)
+    ["node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm", "ort-wasm-simd-threaded.wasm"],
+    ["node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs", "ort-wasm-simd-threaded.mjs"],
   ];
 
   for (const [src, dest] of wasmSources) {
