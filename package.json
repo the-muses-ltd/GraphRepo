@@ -1,13 +1,14 @@
 {
   "name": "graphrepo",
   "displayName": "GraphRepo",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "GraphRAG-powered tool for visualizing and querying code repositories",
   "publisher": "the-muses-ltd",
   "repository": {
     "type": "git",
     "url": "https://github.com/the-muses-ltd/GraphRepo.git"
   },
+  "icon": "media/logo.png",
   "type": "module",
   "engines": {
     "vscode": "^1.110.0"
