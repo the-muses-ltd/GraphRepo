@@ -95,7 +95,9 @@
     "watch:ext": "node esbuild.extension.mjs --watch",
     "watch:webview": "node esbuild.webview.mjs --watch",
     "vscode:prepublish": "npm run build:vscode && npm run build:mcp",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.0.0",
@@ -121,6 +123,7 @@
     "@types/vscode": "^1.110.0",
     "esbuild": "^0.24.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.4"
   }
 }

@@ -16,6 +16,9 @@ const ConfigSchema = z.object({
   ]),
   supportedExtensions: z.array(z.string()).default([
     ".ts", ".tsx", ".js", ".jsx", ".py",
+    ".c", ".h", ".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".hh",
+    ".cs",
+    ".swift",
     ".json", ".md", ".mdx",
     ".css", ".scss", ".less",
     ".html", ".htm", ".svg",
