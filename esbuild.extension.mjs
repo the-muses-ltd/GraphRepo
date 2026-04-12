@@ -14,10 +14,11 @@ const ctx = await esbuild.context({
   sourcemap: true,
   external: [
     "vscode",
-    // Transformers.js loads ONNX runtime dynamically — keep external
-    "@huggingface/transformers",
-    "onnxruntime-node",
   ],
+  alias: {
+    "onnxruntime-node": "./src/graphrag/onnxruntime-node-shim.ts",
+    "sharp": "./src/graphrag/sharp-shim.ts",
+  },
   // Shim import.meta.url for CJS output (needed by tree-sitter-init.ts)
   define: {
     "import.meta.url": "importMetaUrl",
@@ -27,12 +28,13 @@ const ctx = await esbuild.context({
   },
 });
 
-/** Copy tree-sitter WASM files into dist/wasm/ */
+/** Copy tree-sitter and ONNX WASM files into dist/wasm/ */
 function copyWasmFiles() {
   const wasmDir = "dist/wasm";
   mkdirSync(wasmDir, { recursive: true });
 
   const wasmSources = [
+    // Tree-sitter
     ["node_modules/web-tree-sitter/tree-sitter.wasm", "tree-sitter.wasm"],
     ["node_modules/tree-sitter-wasms/out/tree-sitter-typescript.wasm", "tree-sitter-typescript.wasm"],
     ["node_modules/tree-sitter-wasms/out/tree-sitter-javascript.wasm", "tree-sitter-javascript.wasm"],
@@ -41,6 +43,9 @@ function copyWasmFiles() {
     ["node_modules/tree-sitter-wasms/out/tree-sitter-cpp.wasm", "tree-sitter-cpp.wasm"],
     ["node_modules/tree-sitter-wasms/out/tree-sitter-c_sharp.wasm", "tree-sitter-c_sharp.wasm"],
     ["node_modules/tree-sitter-wasms/out/tree-sitter-swift.wasm", "tree-sitter-swift.wasm"],
+    // ONNX Runtime WASM (CPU+SIMD, no WebGPU)
+    ["node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm", "ort-wasm-simd-threaded.wasm"],
+    ["node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs", "ort-wasm-simd-threaded.mjs"],
   ];
 
   for (const [src, dest] of wasmSources) {

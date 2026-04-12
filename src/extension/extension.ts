@@ -13,6 +13,7 @@ let graphService: GraphService | undefined;
 let graphViewProvider: GraphViewProvider | undefined;
 let embeddingService: EmbeddingService | undefined;
 let vectorStore: VectorStore | undefined;
+let outputChannel: vscode.OutputChannel | undefined;
 
 function writeMcpConfig(extensionPath: string, workspaceRoot: string) {
   const mcpPath = path.join(workspaceRoot, ".mcp.json");
@@ -54,9 +55,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
   graphService = new GraphService();
 
+  // Output channel for diagnostics (Output > GraphRepo)
+  outputChannel = vscode.window.createOutputChannel("GraphRepo");
+  context.subscriptions.push(outputChannel);
+
   // Initialize embedding service (model loads lazily on first use)
   const modelCacheDir = path.join(context.globalStorageUri.fsPath, "model-cache");
-  embeddingService = new EmbeddingService(modelCacheDir);
+  embeddingService = new EmbeddingService(modelCacheDir, (msg) => outputChannel!.appendLine(msg));
   vectorStore = new VectorStore();
 
   // Load persisted embeddings
@@ -151,11 +156,12 @@ export async function activate(context: vscode.ExtensionContext) {
             writeMcpConfig(context.extensionPath, repoPath);
 
             // Generate embeddings (non-blocking — if model isn't cached yet, download it)
+            const parseSummary = `Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes`;
             if (embeddingService && vectorStore) {
               progress.report({ message: "Generating embeddings..." });
               try {
-                const initialized = await embeddingService.initialize();
-                if (initialized) {
+                const initResult = await embeddingService.initialize();
+                if (initResult.ok) {
                   vectorStore.clear();
                   const count = await generateEmbeddings(
                     getStore(),
@@ -168,23 +174,28 @@ export async function activate(context: vscode.ExtensionContext) {
                   const embPath = getEmbeddingsStorePath(repoPath);
                   vectorStore.save(embPath);
                   vscode.window.showInformationMessage(
-                    `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes. Embedded ${count} entities.`
+                    `GraphRepo: ${parseSummary}. Embedded ${count} entities.`
                   );
                 } else {
-                  vscode.window.showInformationMessage(
-                    `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes. (Embeddings skipped — model not available)`
+                  const errMsg = initResult.error ?? "unknown error";
+                  outputChannel?.appendLine(`[Embeddings] Init failed: ${errMsg}`);
+                  const action = await vscode.window.showWarningMessage(
+                    `GraphRepo: ${parseSummary}. Embeddings failed: ${errMsg}`,
+                    "Show Logs"
                   );
+                  if (action === "Show Logs") outputChannel?.show();
                 }
               } catch (embErr) {
-                // Non-fatal — embeddings enhance search but are not required
-                vscode.window.showInformationMessage(
-                  `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes. (Embedding generation failed)`
+                const errMsg = embErr instanceof Error ? embErr.message : String(embErr);
+                outputChannel?.appendLine(`[Embeddings] Generation error: ${errMsg}`);
+                const action = await vscode.window.showWarningMessage(
+                  `GraphRepo: ${parseSummary}. Embedding generation failed: ${errMsg}`,
+                  "Show Logs"
                 );
+                if (action === "Show Logs") outputChannel?.show();
               }
             } else {
-              vscode.window.showInformationMessage(
-                `GraphRepo: Parsed ${result.fileCount} files, ${result.functionCount} functions, ${result.classCount} classes`
-              );
+              vscode.window.showInformationMessage(`GraphRepo: ${parseSummary}`);
             }
 
             // Refresh the graph view
