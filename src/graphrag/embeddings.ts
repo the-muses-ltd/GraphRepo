@@ -78,7 +78,7 @@ export class EmbeddingService {
       pipeline = (await createPipeline(
         "feature-extraction",
         "Xenova/all-MiniLM-L6-v2",
-        { dtype: "fp32", device: "wasm" }
+        { dtype: "fp32" }
       )) as unknown as Pipeline;
 
       console.log("[EmbeddingService] Step 6: ready!");
