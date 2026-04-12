@@ -121,6 +121,9 @@ export async function activate(context: vscode.ExtensionContext) {
               ],
               supportedExtensions: [
                 ".ts", ".tsx", ".js", ".jsx", ".py",
+                ".c", ".h", ".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".hh",
+                ".cs",
+                ".swift",
                 ".json", ".md", ".mdx",
                 ".css", ".scss", ".less",
                 ".html", ".htm", ".svg",
