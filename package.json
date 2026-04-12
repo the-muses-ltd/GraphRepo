@@ -1,7 +1,7 @@
 {
   "name": "graphrepo",
   "displayName": "GraphRepo",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "GraphRAG-powered tool for visualizing and querying code repositories",
   "publisher": "the-muses-ltd",
   "repository": {
