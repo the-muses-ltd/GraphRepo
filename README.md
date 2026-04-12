@@ -4,6 +4,7 @@ A knowledge graph for your codebase. GraphRepo parses your repository into an in
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-Claude-cc785c)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/the-muses-ltd.graphrepo?label=VS%20Code%20Marketplace&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=the-muses-ltd.graphrepo)
 
 ![GraphRepo VS Code Extension](media/image.png)
 
@@ -26,24 +27,19 @@ AI assistants read files one at a time. They can't see how your code connects �
 
 ## Getting Started
 
-### 1. Install the VS Code Extension
+### 1. Install
 
-Clone this repo, install dependencies, and build the extension:
+**From the VS Code Marketplace (recommended):**
+
+Search for **"GraphRepo"** in the Extensions panel (`Ctrl+Shift+X`), or install from the command line:
 
 ```bash
-git clone https://github.com/the-muses-ltd/GraphRepo.git
-cd GraphRepo
-npm install
-npm run build:vscode
+code --install-extension the-muses-ltd.graphrepo
 ```
 
-Then install the extension in VS Code:
+**From a VSIX file:**
 
-- Open VS Code
-- Press `Ctrl+Shift+P` → **Extensions: Install from VSIX...**
-- Select the generated `graphrepo-0.2.0.vsix` file
-
-Or install from the command line:
+Download the latest `.vsix` from [GitHub Releases](https://github.com/the-muses-ltd/GraphRepo/releases), then:
 
 ```bash
 code --install-extension graphrepo-0.2.0.vsix
@@ -51,23 +47,19 @@ code --install-extension graphrepo-0.2.0.vsix
 
 ### 2. Parse your repo
 
-Open any project in VS Code. In the GraphRepo sidebar panel, click the **play button** to parse the current workspace into the graph. The graph view will populate automatically.
+Open any project in VS Code, then:
 
-You can also parse from the command line:
+- Press `Ctrl+Shift+P` → **GraphRepo: Parse Workspace**
 
-```bash
-npm run parse -- /path/to/your/repo
-```
-
-Graph data is stored in `.graphrepo/` inside your workspace:
-- `graph.json` — Serialized graph (nodes, edges, communities)
-- `embeddings.json` — Vector embeddings for semantic search
+The graph view in the sidebar will populate automatically. Graph data is stored in `.graphrepo/` inside your workspace.
 
 ### 3. Connect your AI assistant
 
-Use `Ctrl+Shift+P` → **GraphRepo: Configure MCP for Claude** to automatically configure the MCP server for Claude Desktop.
+**MCP is auto-configured.** After parsing, GraphRepo creates a `.mcp.json` in your workspace root so Claude Code picks up the MCP tools automatically. Just restart Claude Code after the first parse.
 
-Or manually add to your `.mcp.json` or Claude Desktop config:
+You can also run `Ctrl+Shift+P` → **GraphRepo: Configure MCP for Claude** at any time.
+
+For other MCP clients, add this to your config manually:
 
 ```json
 {
@@ -84,7 +76,7 @@ Or manually add to your `.mcp.json` or Claude Desktop config:
 }
 ```
 
-This works with Claude Code, Claude Desktop, or any MCP-compatible client. Once connected, your AI assistant can traverse your code graph — tracing call chains, walking dependency trees, and understanding relationships that would be invisible from reading files alone.
+Once connected, your AI assistant can traverse your code graph — tracing call chains, walking dependency trees, and understanding relationships that would be invisible from reading files alone.
 
 ## MCP Tools
 
