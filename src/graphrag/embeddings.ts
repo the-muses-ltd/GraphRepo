@@ -51,33 +51,37 @@ export class EmbeddingService {
   async initialize(): Promise<boolean> {
     if (this.ready) return true;
     try {
-      // Force onnxruntime-web WASM backend instead of onnxruntime-node.
-      // Transformers.js checks globalThis[Symbol.for('onnxruntime')] first,
-      // before falling back to onnxruntime-node (Node.js) or onnxruntime-web (browser).
+      console.log("[EmbeddingService] Step 1: importing onnxruntime-web...");
       // @ts-ignore — onnxruntime-web types don't resolve via package.json "exports"
       const ort = await import("onnxruntime-web");
+
+      console.log("[EmbeddingService] Step 2: setting global override...");
       const ORT_SYMBOL = Symbol.for("onnxruntime");
       if (!(ORT_SYMBOL in globalThis)) {
         (globalThis as Record<symbol, unknown>)[ORT_SYMBOL] = ort;
       }
-      // Configure WASM runtime: single-threaded + local file paths
+
+      console.log("[EmbeddingService] Step 3: configuring WASM paths...");
       if (ort.env?.wasm) {
         ort.env.wasm.numThreads = 1;
-        // Point to our bundled WASM files (file:// URL required for Node.js import())
-        ort.env.wasm.wasmPaths = resolveOnnxWasmDir();
+        const wasmDir = resolveOnnxWasmDir();
+        console.log("[EmbeddingService] wasmPaths =", wasmDir);
+        ort.env.wasm.wasmPaths = wasmDir;
       }
 
-      // Now import Transformers.js — it will see our onnxruntime-web override
+      console.log("[EmbeddingService] Step 4: importing @huggingface/transformers...");
       const { pipeline: createPipeline, env } = await import("@huggingface/transformers");
       env.cacheDir = this.modelCacheDir;
       env.allowRemoteModels = true;
 
+      console.log("[EmbeddingService] Step 5: creating pipeline...");
       pipeline = (await createPipeline(
         "feature-extraction",
         "Xenova/all-MiniLM-L6-v2",
         { dtype: "fp32", device: "wasm" }
       )) as unknown as Pipeline;
 
+      console.log("[EmbeddingService] Step 6: ready!");
       this.ready = true;
       return true;
     } catch (err) {
