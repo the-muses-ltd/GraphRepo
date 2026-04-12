@@ -4,7 +4,7 @@ A knowledge graph for your codebase. GraphRepo parses your repository into an in
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![MCP](https://img.shields.io/badge/MCP-Claude-cc785c)
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/the-muses-ltd.graphrepo?label=VS%20Code%20Marketplace&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=the-muses-ltd.graphrepo)
+[![VS Code Marketplace](https://vsmarketplacebadges.dev/version/the-muses-ltd.graphrepo.svg)](https://marketplace.visualstudio.com/items?itemName=the-muses-ltd.graphrepo)
 
 ![GraphRepo VS Code Extension](media/image.png)
 
