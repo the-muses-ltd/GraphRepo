@@ -8,6 +8,7 @@
     "type": "git",
     "url": "https://github.com/the-muses-ltd/GraphRepo.git"
   },
+  "icon": "media/logo.png",
   "type": "module",
   "engines": {
     "vscode": "^1.110.0"

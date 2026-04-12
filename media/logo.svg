@@ -1,0 +1,63 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="256" height="256" rx="32" fill="#1E1E2E"/>
+
+  <!-- Edges (drawn first, behind nodes) -->
+  <!-- Central hub connections -->
+  <line x1="128" y1="92" x2="68" y2="58" stroke="#585B70" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="128" y1="92" x2="192" y2="62" stroke="#585B70" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="128" y1="92" x2="56" y2="138" stroke="#585B70" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="128" y1="92" x2="198" y2="142" stroke="#585B70" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="128" y1="92" x2="128" y2="168" stroke="#585B70" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Outer connections -->
+  <line x1="68" y1="58" x2="56" y2="138" stroke="#45475A" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="192" y1="62" x2="198" y2="142" stroke="#45475A" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="56" y1="138" x2="88" y2="204" stroke="#45475A" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="198" y1="142" x2="168" y2="204" stroke="#45475A" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="128" y1="168" x2="88" y2="204" stroke="#45475A" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="128" y1="168" x2="168" y2="204" stroke="#45475A" stroke-width="1.8" stroke-linecap="round"/>
+
+  <!-- Cross connections (subtle) -->
+  <line x1="68" y1="58" x2="192" y2="62" stroke="#313244" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="88" y1="204" x2="168" y2="204" stroke="#313244" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Glow effects for main nodes -->
+  <circle cx="128" cy="92" r="20" fill="#89B4FA" opacity="0.15"/>
+  <circle cx="68" cy="58" r="14" fill="#A6E3A1" opacity="0.12"/>
+  <circle cx="192" cy="62" r="14" fill="#F9E2AF" opacity="0.12"/>
+
+  <!-- Nodes -->
+  <!-- Central node (Module/Hub) - Blue -->
+  <circle cx="128" cy="92" r="14" fill="#89B4FA"/>
+  <circle cx="128" cy="92" r="14" stroke="#B4D0FB" stroke-width="1" opacity="0.5"/>
+
+  <!-- Top-left node (Function) - Green -->
+  <circle cx="68" cy="58" r="10" fill="#A6E3A1"/>
+
+  <!-- Top-right node (Class) - Yellow -->
+  <circle cx="192" cy="62" r="10" fill="#F9E2AF"/>
+
+  <!-- Mid-left node (File) - Mauve -->
+  <circle cx="56" cy="138" r="10" fill="#CBA6F7"/>
+
+  <!-- Mid-right node (Interface) - Peach -->
+  <circle cx="198" cy="142" r="10" fill="#FAB387"/>
+
+  <!-- Center-bottom node (Variable) - Teal -->
+  <circle cx="128" cy="168" r="10" fill="#94E2D5"/>
+
+  <!-- Bottom-left node (Import) - Pink -->
+  <circle cx="88" cy="204" r="8" fill="#F5C2E7"/>
+
+  <!-- Bottom-right node (Community) - Red -->
+  <circle cx="168" cy="204" r="8" fill="#F38BA8"/>
+
+  <!-- Small accent dots -->
+  <circle cx="42" cy="88" r="3.5" fill="#585B70"/>
+  <circle cx="214" cy="98" r="3.5" fill="#585B70"/>
+  <circle cx="152" cy="42" r="3" fill="#585B70"/>
+  <line x1="42" y1="88" x2="56" y2="138" stroke="#313244" stroke-width="1" stroke-linecap="round"/>
+  <line x1="214" y1="98" x2="198" y2="142" stroke="#313244" stroke-width="1" stroke-linecap="round"/>
+  <line x1="152" y1="42" x2="192" y2="62" stroke="#313244" stroke-width="1" stroke-linecap="round"/>
+</svg>
