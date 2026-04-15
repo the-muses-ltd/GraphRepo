@@ -48,8 +48,13 @@ jobs:
       - name: Parse the repo
         run: npm run parse -- .
 
+      - name: Build embeddings index
+        run: npx tsx eval/build-index.ts
+
       - name: Run eval
-        run: npm run eval -- --json eval/results/ci.json | tee eval/results/ci.txt
+        run: |
+          mkdir -p eval/results
+          npm run eval -- --json eval/results/ci.json | tee eval/results/ci.txt
 
       - name: Upload results
         uses: actions/upload-artifact@v4
