@@ -126,6 +126,40 @@ GraphRepo includes a VS Code extension with a sidebar graph view:
 | `npm run build:mcp` | Bundle standalone MCP server |
 | `npm run build:vscode` | Build extension + webview |
 | `npm run typecheck` | Run TypeScript type checking |
+| `npm run eval` | Run retrieval eval across all strategies |
+| `npm run eval -- --strategy <id>` | Run eval for a single strategy |
+
+## Retrieval strategies & evaluation
+
+`semantic_search` dispatches to one of several pluggable retrieval strategies
+registered in [src/graphrag/retrievers/](src/graphrag/retrievers/). The
+strategy that ships by default is whichever one currently performs best on
+the eval set — see [RAG_PLAN.md](RAG_PLAN.md) for the numbers and
+[eval/README.md](eval/README.md) for the guide.
+
+### PR policy — retrieval changes
+
+Any PR that touches retrieval, embeddings, node descriptions, or the
+tokenizer **must**:
+
+1. Run `npm run eval -- --json eval/results/pr-<number>.json` locally.
+2. Paste the summary table into the PR description, with deltas vs. `main`.
+3. Update [RAG_PLAN.md](RAG_PLAN.md) if the winning strategy changes.
+4. Add or adjust queries in [eval/queries.json](eval/queries.json) if the
+   change enables behavior the existing set doesn't cover (e.g. a new
+   language, a new node type).
+
+**Only the best-performing strategy is shipped as the default.** If you add
+a new strategy that beats the current `DEFAULT_STRATEGY_ID` on Recall@10 on
+the holdout split without regressing any category by more than ~2 points,
+update `DEFAULT_STRATEGY_ID` in [src/graphrag/retrievers/index.ts](src/graphrag/retrievers/index.ts)
+in the same PR. Older strategies are kept in the registry so future changes
+can measure against them, but they aren't wired into production.
+
+CI runs metric unit tests on every PR. The full eval runs on PRs that touch
+retrieval paths (see [.github/workflows/eval.yml](.github/workflows/eval.yml))
+and its results are uploaded as an artifact plus summarized in the job
+summary.
 
 ## Architecture
 
@@ -135,6 +169,7 @@ src/
 │   └── languages/   # Per-language extraction logic
 ├── graph/           # Graphology in-memory graph (store, sync, queries, persistence)
 ├── graphrag/        # Community detection (Louvain) + Transformers.js embeddings
+│   └── retrievers/  # Pluggable retrieval strategies (hybrid, graph-expanded, reranker, …)
 ├── mcp/             # MCP server with 10 tools
 ├── extension/       # VS Code extension + webview
 ├── web/             # D3-force visualization (dark theme)

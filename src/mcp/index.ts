@@ -9,6 +9,11 @@ import * as queries from "../graph/queries.js";
 import type { Config } from "../config.js";
 import type { EmbeddingService } from "../graphrag/embeddings.js";
 import type { VectorStore } from "../graphrag/vector-store.js";
+import {
+  getDefaultStrategy,
+  getStrategy,
+  STRATEGIES,
+} from "../graphrag/retrievers/index.js";
 
 const MCP_EVENT_FILE = join(tmpdir(), "graphrepo-mcp-events.json");
 
@@ -237,14 +242,22 @@ export const createMcpServer = (
     const embSvc = options.embeddingService;
     const vecStore = options.vectorStore;
 
+    const strategyIds = STRATEGIES.map((s) => s.id);
+
     server.tool(
       "semantic_search",
       "Search code by meaning — find entities related to a concept even without exact name matches",
       {
         query: z.string().describe("Natural language query describing what you're looking for"),
         limit: z.number().default(10).describe("Maximum results to return"),
+        strategy: z
+          .enum(strategyIds as [string, ...string[]])
+          .optional()
+          .describe(
+            `Retrieval strategy (default: the current best performer on the eval set). Options: ${strategyIds.join(", ")}`,
+          ),
       },
-      async ({ query, limit }) => {
+      async ({ query, limit, strategy }) => {
         emitEvent("semantic_search", query, "query");
         try {
           if (!embSvc.isReady()) {
@@ -253,27 +266,42 @@ export const createMcpServer = (
               isError: true,
             };
           }
-          const queryEmbedding = await embSvc.embedText(query);
-          const results = vecStore.search(queryEmbedding, limit);
+          const retriever = strategy ? getStrategy(strategy) : getDefaultStrategy();
+          if (!retriever) {
+            return {
+              content: [{ type: "text" as const, text: `Unknown strategy: ${strategy}` }],
+              isError: true,
+            };
+          }
+          const hits = await retriever.retrieve(query, limit, {
+            graph,
+            vectorStore: vecStore,
+            embeddingService: embSvc,
+          });
 
-          // Enrich results with node attributes from graph
-          const enriched = results.map((r) => {
+          const enriched = hits.map((h) => {
             try {
-              const attrs = graph.getNodeAttributes(r.id);
+              const attrs = graph.getNodeAttributes(h.id);
               return {
-                id: r.id,
+                id: h.id,
                 name: attrs.name,
                 type: attrs.type,
                 filePath: attrs.path,
-                score: Math.round(r.score * 1000) / 1000,
-                description: r.text,
+                score: Math.round(h.score * 10000) / 10000,
               };
             } catch {
-              return { id: r.id, score: Math.round(r.score * 1000) / 1000, description: r.text };
+              return { id: h.id, score: Math.round(h.score * 10000) / 10000 };
             }
           });
 
-          return { content: [{ type: "text" as const, text: formatResults(enriched) }] };
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: formatResults({ strategy: retriever.id, results: enriched }),
+              },
+            ],
+          };
         } catch (err) {
           return {
             content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }],

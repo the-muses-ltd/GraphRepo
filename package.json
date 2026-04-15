@@ -98,7 +98,8 @@
     "vscode:prepublish": "npm run build:vscode && npm run build:mcp",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "eval": "tsx eval/runner.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.0.0",
