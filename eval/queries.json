@@ -1,0 +1,300 @@
+{
+  "description": "Evaluation queries for GraphRepo semantic search. Each query targets the graph built from GraphRepo's own source. 'relevant' is the set of node IDs we consider correct hits. Categories: lexical | conceptual | structural | fuzzy. 'split': dev | holdout.",
+  "queries": [
+    {
+      "id": "q01",
+      "query": "cosine similarity between vectors",
+      "category": "conceptual",
+      "split": "dev",
+      "relevant": [
+        "Function::src/graphrag/vector-store.ts:dotProduct",
+        "Function::src/graphrag/embeddings.ts:EmbeddingService.cosineSimilarity"
+      ]
+    },
+    {
+      "id": "q02",
+      "query": "VectorStore search",
+      "category": "lexical",
+      "split": "dev",
+      "relevant": [
+        "Function::src/graphrag/vector-store.ts:VectorStore.search",
+        "Class::src/graphrag/vector-store.ts:VectorStore"
+      ]
+    },
+    {
+      "id": "q03",
+      "query": "how are embeddings persisted to disk",
+      "category": "conceptual",
+      "split": "dev",
+      "relevant": [
+        "Function::src/graphrag/vector-store.ts:VectorStore.save",
+        "Function::src/graphrag/vector-store.ts:VectorStore.load",
+        "Function::src/graph/persistence.ts:getEmbeddingsStorePath"
+      ]
+    },
+    {
+      "id": "q04",
+      "query": "encode Float32Array as base64",
+      "category": "conceptual",
+      "split": "dev",
+      "relevant": [
+        "Function::src/graphrag/vector-store.ts:float32ToBase64",
+        "Function::src/graphrag/vector-store.ts:base64ToFloat32"
+      ]
+    },
+    {
+      "id": "q05",
+      "query": "load the ONNX embedding model",
+      "category": "conceptual",
+      "split": "dev",
+      "relevant": [
+        "Function::src/graphrag/embeddings.ts:EmbeddingService.initialize",
+        "Class::src/graphrag/embeddings.ts:EmbeddingService"
+      ]
+    },
+    {
+      "id": "q06",
+      "query": "walk repository files",
+      "category": "lexical",
+      "split": "dev",
+      "relevant": [
+        "Function::src/parser/file-walker.ts:walkRepository",
+        "File::src/parser/file-walker.ts"
+      ]
+    },
+    {
+      "id": "q07",
+      "query": "detect communities in the graph",
+      "category": "conceptual",
+      "split": "dev",
+      "relevant": [
+        "File::src/graphrag/communities.ts",
+        "Module::graphology-communities-louvain"
+      ]
+    },
+    {
+      "id": "q08",
+      "query": "generate text description of a graph node for embedding",
+      "category": "conceptual",
+      "split": "dev",
+      "relevant": [
+        "Function::src/graphrag/embeddings.ts:buildNodeDescription",
+        "Function::src/graphrag/embeddings.ts:generateEmbeddings"
+      ]
+    },
+    {
+      "id": "q09",
+      "query": "parseCommand",
+      "category": "lexical",
+      "split": "dev",
+      "relevant": [
+        "Function::src/cli/commands/parse.ts:parseCommand"
+      ]
+    },
+    {
+      "id": "q10",
+      "query": "where is the MCP server wired up",
+      "category": "structural",
+      "split": "dev",
+      "relevant": [
+        "Function::src/cli/commands/serve.ts:serveCommand",
+        "File::src/mcp/index.ts"
+      ]
+    },
+    {
+      "id": "q11",
+      "query": "save graph to JSON file",
+      "category": "conceptual",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/graph/persistence.ts:saveGraph",
+        "Function::src/graph/persistence.ts:loadGraph"
+      ]
+    },
+    {
+      "id": "q12",
+      "query": "mean pooling sentence embedding",
+      "category": "fuzzy",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/graphrag/embeddings.ts:EmbeddingService.embedText",
+        "Function::src/graphrag/embeddings.ts:EmbeddingService.embedBatch"
+      ]
+    },
+    {
+      "id": "q13",
+      "query": "tree-sitter parser initialization",
+      "category": "conceptual",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/parser/tree-sitter-init.ts:getParser",
+        "File::src/parser/tree-sitter-init.ts"
+      ]
+    },
+    {
+      "id": "q14",
+      "query": "search nodes by name",
+      "category": "conceptual",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/graph/queries.ts:searchByName",
+        "Function::src/graph/queries.ts:searchNodes"
+      ]
+    },
+    {
+      "id": "q15",
+      "query": "color graph nodes by community",
+      "category": "structural",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/web/graph-renderer.ts:GraphRenderer.colorByCommunity",
+        "Function::src/web/graph-renderer.ts:GraphRenderer.communityColorMap"
+      ]
+    },
+    {
+      "id": "q16",
+      "query": "write MCP server configuration for Claude",
+      "category": "conceptual",
+      "split": "dev",
+      "relevant": [
+        "Function::src/extension/extension.ts:writeMcpConfig"
+      ]
+    },
+    {
+      "id": "q17",
+      "query": "skip hidden files and node_modules when walking",
+      "category": "conceptual",
+      "split": "dev",
+      "relevant": [
+        "Function::src/parser/file-walker.ts:shouldIgnore"
+      ]
+    },
+    {
+      "id": "q18",
+      "query": "mergeFunctionNodes",
+      "category": "lexical",
+      "split": "dev",
+      "relevant": [
+        "Function::src/graph/sync.ts:mergeFunctionNodes"
+      ]
+    },
+    {
+      "id": "q19",
+      "query": "create CALLS edges between functions",
+      "category": "structural",
+      "split": "dev",
+      "relevant": [
+        "Function::src/graph/sync.ts:createCallRelationships"
+      ]
+    },
+    {
+      "id": "q20",
+      "query": "extract functions from a parsed source file",
+      "category": "conceptual",
+      "split": "dev",
+      "relevant": [
+        "Function::src/parser/extract.ts:extractFromFile",
+        "File::src/parser/extract.ts"
+      ]
+    },
+    {
+      "id": "q21",
+      "query": "VS Code extension entry point",
+      "category": "structural",
+      "split": "dev",
+      "relevant": [
+        "Function::src/extension/extension.ts:activate",
+        "File::src/extension/extension.ts"
+      ]
+    },
+    {
+      "id": "q22",
+      "query": "open a file in the editor from the webview",
+      "category": "structural",
+      "split": "dev",
+      "relevant": [
+        "Function::src/extension/webview/webview-api.ts:openFile",
+        "Function::src/extension/graph-view-provider.ts:GraphViewProvider.openFileInEditor"
+      ]
+    },
+    {
+      "id": "q23",
+      "query": "register MCP tools on the server",
+      "category": "structural",
+      "split": "dev",
+      "relevant": [
+        "Function::src/mcp/index.ts:createMcpServer",
+        "File::src/mcp/index.ts"
+      ]
+    },
+    {
+      "id": "q24",
+      "query": "resolve import specifier to file path",
+      "category": "conceptual",
+      "split": "holdout",
+      "relevant": [
+        "File::src/parser/resolve.ts",
+        "Function::src/parser/resolve.ts:extensionsFor"
+      ]
+    },
+    {
+      "id": "q25",
+      "query": "syncToGraph",
+      "category": "lexical",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/graph/sync.ts:syncToGraph"
+      ]
+    },
+    {
+      "id": "q26",
+      "query": "force directed graph layout simulation",
+      "category": "fuzzy",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/web/graph-renderer.ts:GraphRenderer.simulation",
+        "Module::d3-force"
+      ]
+    },
+    {
+      "id": "q27",
+      "query": "deduplicate nodes when merging parsed files",
+      "category": "conceptual",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/graph/sync.ts:mergeFileNodes",
+        "Function::src/graph/sync.ts:syncToGraph"
+      ]
+    },
+    {
+      "id": "q28",
+      "query": "what functions does createMcpServer call",
+      "category": "structural",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/mcp/index.ts:createMcpServer",
+        "Function::src/mcp/index.ts:emitEvent",
+        "Function::src/mcp/index.ts:formatResults"
+      ]
+    },
+    {
+      "id": "q29",
+      "query": "track which file the user is currently editing",
+      "category": "fuzzy",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/extension/graph-view-provider.ts:GraphViewProvider.trackEditor",
+        "Function::src/extension/graph-view-provider.ts:GraphViewProvider.centerOnNode"
+      ]
+    },
+    {
+      "id": "q30",
+      "query": "language-specific call extraction for Python",
+      "category": "conceptual",
+      "split": "holdout",
+      "relevant": [
+        "Function::src/parser/languages/python.ts:extractCalls"
+      ]
+    }
+  ]
+}

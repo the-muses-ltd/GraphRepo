@@ -1,0 +1,77 @@
+name: RAG Eval
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/graphrag/**'
+      - 'src/graph/**'
+      - 'src/parser/**'
+      - 'eval/**'
+      - 'tests/eval/**'
+      - '.github/workflows/eval.yml'
+
+jobs:
+  metric-tests:
+    name: Metric unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run tests/eval/metrics.test.ts
+
+  full-eval:
+    name: Full retrieval eval
+    runs-on: ubuntu-latest
+    needs: metric-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Cache the downloaded embedding model between runs.
+      - name: Cache model files
+        uses: actions/cache@v4
+        with:
+          path: .graphrepo/model-cache
+          key: transformers-cache-${{ runner.os }}-minilm-v1
+
+      - name: Parse the repo
+        run: npm run parse -- .
+
+      - name: Build embeddings index
+        run: npx tsx eval/build-index.ts
+
+      - name: Run eval
+        run: |
+          mkdir -p eval/results
+          npm run eval -- --json eval/results/ci.json | tee eval/results/ci.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: eval/results/
+
+      - name: Post summary
+        if: always()
+        run: |
+          echo "## RAG Eval Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 80 eval/results/ci.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "See the \`eval-results\` artifact for full JSON." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "PR policy: if any non-default strategy beats the default on Recall@10," >> "$GITHUB_STEP_SUMMARY"
+          echo "update \`DEFAULT_STRATEGY_ID\` and \`RAG_PLAN.md\` in this PR." >> "$GITHUB_STEP_SUMMARY"
